@@ -9,7 +9,7 @@ from collections import OrderedDict
 import uuid
 
 def strip_one(string, pattern):
-    return re.sub(pattern + '$', "", re.sub('^' + pattern, "", string))
+    return re.sub(f'{pattern}$', "", re.sub(f'^{pattern}', "", string))
 
 def find_breakpoints(input_string, quote_chars = ["'", '"'], delim = ','):
     breakpoints = []
@@ -26,15 +26,14 @@ def find_breakpoints(input_string, quote_chars = ["'", '"'], delim = ','):
             if character == ']':
                 is_encapsulated = False
 
-        else:
-            if character in quote_chars:
-                in_quotes = character
+        elif character in quote_chars:
+            in_quotes = character
 
-            elif character == '[':
-                is_encapsulated = True
+        elif character == '[':
+            is_encapsulated = True
 
-            elif character == delim:
-                breakpoints.append(index)
+        elif character == delim:
+            breakpoints.append(index)
 
     return breakpoints
 
@@ -91,18 +90,18 @@ def parse_schema(stdout):
     while stdout:
         # Find the next table entry
         stdout = stdout[stdout.find("Type: table") : ]
-        table_name = stdout[stdout.find("Table Name:") + 11 : stdout.find("SQL:")].strip()
-
-        if table_name:
+        if table_name := stdout[
+            stdout.find("Table Name:") + 11 : stdout.find("SQL:")
+        ].strip():
             stdout = stdout[stdout.find("SQL:") + 4 : ]
-            
+
             closing_parenthesis_found = False
             in_quotes = False
             index = 0
             while not closing_parenthesis_found and stdout:
                 if stdout[index] == "'":
                     in_quotes = not in_quotes
-        
+
                 elif stdout[index] == '(' and not in_quotes:
                     next_parenthesis = index
                     closing_parenthesis = get_index_of_closing_parenthesis(stdout, next_parenthesis)
@@ -243,16 +242,11 @@ row_gen_dict = OrderedDict({
 
 # Uses columns dict in request.param objects
 def generate_rows(num_rows, columns):
-    row_spec = []
-    for field_type in columns.values():
-        row_spec.append(row_gen_dict[field_type])
-
+    row_spec = [row_gen_dict[field_type] for field_type in columns.values()]
     row_list = []
     for _ in range(num_rows):
         row = [uuid.uuid4().hex]
-        for generator in row_spec:
-            row.append(generator())
-
+        row.extend(generator() for generator in row_spec)
         row_list.append(row)
 
     return row_list
@@ -260,9 +254,9 @@ def generate_rows(num_rows, columns):
 
 # Assumes columns doesn't include the id field (rowid alias). Uses columns dict in request.param objects
 def generate_create_statement(table_name, columns):
-    create_statement = "CREATE TABLE " + table_name + " (id TEXT PRIMARY KEY"
+    create_statement = f"CREATE TABLE {table_name} (id TEXT PRIMARY KEY"
     for column_name, attributes in columns.items():
-        create_statement += ', ' + column_name + ' ' + attributes
+        create_statement += f', {column_name} {attributes}'
 
     create_statement += ')'
     return create_statement
@@ -270,12 +264,12 @@ def generate_create_statement(table_name, columns):
 
 # Generates a statement for use with sqlite3 library (uses qmark substitution).
 def generate_insert_statement(table_name, num_values):
-    return "INSERT INTO " + table_name + " VALUES (" + num_values * "?, " + "?)"
+    return f"INSERT INTO {table_name} VALUES (" + num_values * "?, " + "?)"
 
 
 def generate_update_statement(table_name, columns):
-    string_fields = ["%s=?" % field for field in columns.keys()]
-    return "UPDATE " + table_name + " SET " + ', '.join(string_fields) + " WHERE id=?"
+    string_fields = [f"{field}=?" for field in columns.keys()]
+    return f"UPDATE {table_name} SET " + ', '.join(string_fields) + " WHERE id=?"
 
 
 @pytest.fixture(params=db_params)
@@ -288,9 +282,9 @@ def db_file(request, tmp_path):
     with sqlite3.connect(str(db_filepath.resolve())) as db:
         cursor = db.cursor()
 
-        cursor.execute("PRAGMA journal_mode = %s" % (request.param['journal_mode']))
-        cursor.execute("PRAGMA encoding = '%s'" % (request.param['encoding']))
-        cursor.execute("PRAGMA page_size = %s" % (request.param['page_size']))
+        cursor.execute(f"PRAGMA journal_mode = {request.param['journal_mode']}")
+        cursor.execute(f"PRAGMA encoding = '{request.param['encoding']}'")
+        cursor.execute(f"PRAGMA page_size = {request.param['page_size']}")
 
         cursor.execute(generate_create_statement(request.param['table_name'], request.param['columns']))
 

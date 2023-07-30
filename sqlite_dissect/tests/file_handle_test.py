@@ -68,15 +68,13 @@ def test_database_text_encoding_setter(database_text_encoding, expected_value):
             file_handle.database_text_encoding = database_text_encoding
     else:
         file_handle.database_text_encoding = database_text_encoding
-        assert True
 
 
 @pytest.fixture(params=[RUNTIME_WARNING, SUCCESS])
 def test_close_file_handle(request):
     if request.param == RUNTIME_WARNING:
-        temp_file = open(os.path.join(DB_FILES, 'chinook.sqlite'))
-        yield FileHandle(FILE_TYPE.DATABASE, temp_file, None, None), RUNTIME_WARNING
-        temp_file.close()
+        with open(os.path.join(DB_FILES, 'chinook.sqlite')) as temp_file:
+            yield FileHandle(FILE_TYPE.DATABASE, temp_file, None, None), RUNTIME_WARNING
     elif request.param == IO_ERROR:
         temp_file = open(os.path.join(DB_FILES, 'chinook.sqlite'))
         temp_file.close()
@@ -97,8 +95,6 @@ def test_close(test_close_file_handle):
             test_close_file_handle[0].close()
             if w:
                 assert False
-            else:
-                assert True
 
 
 test_read_data_params = [
@@ -118,5 +114,4 @@ def test_read_data(file_handle, offset, number_of_bytes, expected):
             file_handle.read_data(offset, number_of_bytes)
     else:
         file_handle.read_data(offset, number_of_bytes)
-        assert True
 

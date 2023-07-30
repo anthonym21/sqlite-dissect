@@ -317,7 +317,7 @@ def test_corpus(tmp_path, file_name, first_field, expected_schema, expected_rows
     # TODO: Refactor csv parsing to account for WITHOUT_ROWID cases (no schema info)
     # Some pages cannot be found, even with freelist carving enabled
     # TODO: Establish an acceptable ratio of pages found for similar tests
-    if file_name == "03-01.db" or file_name == "09-01.db":
+    if file_name in ["03-01.db", "09-01.db"]:
         pytest.skip("skipping tests on unimplemented functionality")
 
     with open(str(tmp_path / "log.txt"), 'w') as stdout:
@@ -327,7 +327,7 @@ def test_corpus(tmp_path, file_name, first_field, expected_schema, expected_rows
         if file_name == '08-01.db':
             with pytest.raises(NotImplementedError):
                 main(args, sqlite_files[0], len(sqlite_files) > 1)
-            
+
             return
 
         else:

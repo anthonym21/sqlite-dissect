@@ -87,14 +87,16 @@ class WriteAheadLogIndexHeader(SQLiteHeader):
 
     def stringify(self, padding=""):
         string = padding + "Page Size: {}\n" \
-                 + padding + "MD5 Hex Digest: {}"
+                     + padding + "MD5 Hex Digest: {}"
         string = string.format(self.page_size,
                                self.md5_hex_digest)
         for sub_header_index in range(len(self.sub_headers)):
             string += "\n" + padding + "Sub Header:\n{}"
             string = string.format(self.sub_headers[sub_header_index].stringify(padding + "\t"))
         string += "\n" + padding + "Checkpoint Info:\n{}".format(self.checkpoint_info.stringify(padding + "\t"))
-        string += "\n" + padding + "Lock Reserved (Hex): {}".format(hexlify(self.lock_reserved))
+        string += (
+            "\n" + padding + f"Lock Reserved (Hex): {hexlify(self.lock_reserved)}"
+        )
         return string
 
 
@@ -107,7 +109,7 @@ class WriteAheadLogIndexSubHeader(SQLiteHeader):
         logger = getLogger(LOGGER_NAME)
 
         if index < 0 or index > WAL_INDEX_NUMBER_OF_SUB_HEADERS:
-            log_message = "Invalid wal index sub header index: {}.".format(index)
+            log_message = f"Invalid wal index sub header index: {index}."
             logger.error(log_message)
             raise ValueError(log_message)
 
@@ -122,7 +124,9 @@ class WriteAheadLogIndexSubHeader(SQLiteHeader):
         self.endianness = ENDIANNESS.LITTLE_ENDIAN
 
         # Retrieve the file format version in little endian
-        self.file_format_version = unpack(b"<I", wal_index_sub_header_byte_array[0:4])[0]
+        self.file_format_version = unpack(
+            b"<I", wal_index_sub_header_byte_array[:4]
+        )[0]
 
         """
 
@@ -134,7 +138,9 @@ class WriteAheadLogIndexSubHeader(SQLiteHeader):
         if self.file_format_version != WAL_INDEX_FILE_FORMAT_VERSION:
 
             # Retrieve the file format version in big endian
-            self.file_format_version = unpack(b">I", wal_index_sub_header_byte_array[0:4])[0]
+            self.file_format_version = unpack(
+                b">I", wal_index_sub_header_byte_array[:4]
+            )[0]
 
             if self.file_format_version != WAL_INDEX_FILE_FORMAT_VERSION:
 
@@ -216,7 +222,9 @@ class WriteAheadLogIndexCheckpointInfo(object):
             logger.error(log_message)
             raise ValueError(log_message)
 
-        self.number_of_frames_backfilled_in_database = unpack(b"<I", wal_index_checkpoint_info_byte_array[0:4])[0]
+        self.number_of_frames_backfilled_in_database = unpack(
+            b"<I", wal_index_checkpoint_info_byte_array[:4]
+        )[0]
 
         """
 
@@ -242,11 +250,14 @@ class WriteAheadLogIndexCheckpointInfo(object):
 
     def stringify(self, padding=""):
         string = padding + "Endianness: {}\n" \
-                 + padding + "Number of Frames Backfilled in Database: {}"
+                     + padding + "Number of Frames Backfilled in Database: {}"
         string = string.format(self.endianness,
                                self.number_of_frames_backfilled_in_database)
         for reader_mark_index in range(len(self.reader_marks)):
-            string += "\n" + padding + "Reader Mark {}: {}".format(reader_mark_index + 1,
-                                                                   self.reader_marks[reader_mark_index])
-        string += "\n" + padding + "MD5 Hex Digest: {}".format(self.md5_hex_digest)
+            string += (
+                "\n"
+                + padding
+                + f"Reader Mark {reader_mark_index + 1}: {self.reader_marks[reader_mark_index]}"
+            )
+        string += "\n" + padding + f"MD5 Hex Digest: {self.md5_hex_digest}"
         return string

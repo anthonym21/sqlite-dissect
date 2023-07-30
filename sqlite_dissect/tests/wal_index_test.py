@@ -12,5 +12,3 @@ test_wal_index_init_params = [
 @pytest.mark.parametrize("file_name, file_size", test_wal_index_init_params)
 def test_wal_index_init(file_size, file_name):
     wal_index = WriteAheadLogIndex(file_name, file_size)
-
-    assert True

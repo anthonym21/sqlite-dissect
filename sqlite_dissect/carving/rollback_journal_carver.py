@@ -58,7 +58,7 @@ class RollBackJournalCarver(object):
         # Initialize the carve commits
         carved_commits = []
 
-        logger.debug("Starting carving table: %s... " % master_schema_entry.name)
+        logger.debug(f"Starting carving table: {master_schema_entry.name}... ")
 
         has_data = True
         offset = sector_size
@@ -110,7 +110,7 @@ class RollBackJournalCarver(object):
                 if page_type in ["0d", "05"]:
 
                     page_type_string = PAGE_TYPE.B_TREE_TABLE_LEAF if page_type == "0d" \
-                        else PAGE_TYPE.B_TREE_TABLE_INTERIOR
+                            else PAGE_TYPE.B_TREE_TABLE_INTERIOR
                     carved_cells = SignatureCarver.carve_unallocated_space(version, FILE_TYPE.ROLLBACK_JOURNAL,
                                                                            page_number, 0, page_content, signature,
                                                                            offset + page_record_header_size)

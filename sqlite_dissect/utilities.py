@@ -160,17 +160,14 @@ def get_record_content(serial_type, record_body, offset=0):
         content_size = 0
         value = None
 
-    # 8-bit twos-complement integer
     elif serial_type == 1:
         content_size = 1
         value = unpack(b">b", record_body[offset:offset + content_size])[0]
 
-    # Big-endian 16-bit twos-complement integer
     elif serial_type == 2:
         content_size = 2
         value = unpack(b">h", record_body[offset:offset + content_size])[0]
 
-    # Big-endian 24-bit twos-complement integer
     elif serial_type == 3:
         content_size = 3
         value_byte_array = '\0' + record_body[offset:offset + content_size]
@@ -178,12 +175,10 @@ def get_record_content(serial_type, record_body, offset=0):
         if value & 0x800000:
             value -= 0x1000000
 
-    # Big-endian 32-bit twos-complement integer
     elif serial_type == 4:
         content_size = 4
         value = unpack(b">i", record_body[offset:offset + content_size])[0]
 
-    # Big-endian 48-bit twos-complement integer
     elif serial_type == 5:
         content_size = 6
         value_byte_array = '\0' + '\0' + record_body[offset:offset + content_size]
@@ -191,36 +186,31 @@ def get_record_content(serial_type, record_body, offset=0):
         if value & 0x800000000000:
             value -= 0x1000000000000
 
-    # Big-endian 64-bit twos-complement integer
     elif serial_type == 6:
         content_size = 8
         value = unpack(b">q", record_body[offset:offset + content_size])[0]
 
-    # Big-endian IEEE 754-2008 64-bit floating point number
     elif serial_type == 7:
         content_size = 8
         value = unpack(b">d", record_body[offset:offset + content_size])[0]
 
-    # Integer constant 0 (schema format == 4)
     elif serial_type == 8:
         content_size = 0
         value = 0
 
-    # Integer constant 1 (schema format == 4)
     elif serial_type == 9:
         content_size = 0
         value = 1
 
-    # These values are not used/reserved and should not be found in sqlite files
-    elif serial_type == 10 or serial_type == 11:
-        raise ValueError("The serial type {} is not expected in SQLite files".format(serial_type))
+    elif serial_type in [10, 11]:
+        raise ValueError(
+            f"The serial type {serial_type} is not expected in SQLite files"
+        )
 
-    # A BLOB that is (N-12)/2 bytes in length
     elif serial_type >= 12 and serial_type % 2 == 0:
         content_size = (serial_type - 12) / 2
         value = record_body[offset:offset + content_size]
 
-    # A string in the database encoding and is (N-13)/2 bytes in length.  The nul terminator is omitted
     elif serial_type >= 13 and serial_type % 2 == 1:
         content_size = (serial_type - 13) / 2
         value = record_body[offset:offset + content_size]
@@ -245,9 +235,7 @@ def get_serial_type_signature(serial_type):
 
 def has_content(byte_array):
     pattern = compile(ALL_ZEROS_REGEX)
-    if pattern.match(hexlify(byte_array)):
-        return False
-    return True
+    return not pattern.match(hexlify(byte_array))
 
 
 def is_sqlite_file(path):
@@ -262,17 +250,17 @@ def is_sqlite_file(path):
     """
     # Ensure the path exists
     if not exists(path):
-        raise IOError("The specified path cannot be found: {}".format(path))
+        raise IOError(f"The specified path cannot be found: {path}")
 
     # Attempt to open the file for reading
     try:
         with open(path, "rb") as sqlite:
             header = sqlite.read(SQLITE_DATABASE_HEADER_LENGTH)
-            header_magic = header[0:16]
+            header_magic = header[:16]
             magic = MAGIC_HEADER_STRING.decode(MAGIC_HEADER_STRING_ENCODING)
             return header_magic == magic
     except IOError as e:
-        logging.error("Invalid SQLite file found: {}".format(e))
+        logging.error(f"Invalid SQLite file found: {e}")
 
 
 def get_sqlite_files(path):
@@ -287,26 +275,24 @@ def get_sqlite_files(path):
     """
     sqlite_files = []
 
-    if exists(path):
-        # Determine if it's a directory
-        if isdir(path):
-            for root, dirnames, filenames in walk(path):
-                for filename in filenames:
-                    if filename.endswith(SQLITE_FILE_EXTENSIONS):
-                        # Ensure the SQLite file is valid
-                        relative_path = join(root, filename)
-                        if is_sqlite_file(relative_path):
-                            sqlite_files.append(relative_path)
-                        else:
-                            logging.info("File was found but is not a SQLite file: {}".format(relative_path))
-        else:
-            if is_sqlite_file(path):
-                sqlite_files.append(path)
-            else:
-                logging.info("File was found but is not a SQLite file: {}".format(path))
-    else:
-        raise IOError("The specified path cannot be found: {}".format(path))
+    if not exists(path):
+        raise IOError(f"The specified path cannot be found: {path}")
 
+        # Determine if it's a directory
+    if isdir(path):
+        for root, dirnames, filenames in walk(path):
+            for filename in filenames:
+                if filename.endswith(SQLITE_FILE_EXTENSIONS):
+                    # Ensure the SQLite file is valid
+                    relative_path = join(root, filename)
+                    if is_sqlite_file(relative_path):
+                        sqlite_files.append(relative_path)
+                    else:
+                        logging.info(f"File was found but is not a SQLite file: {relative_path}")
+    elif is_sqlite_file(path):
+        sqlite_files.append(path)
+    else:
+        logging.info(f"File was found but is not a SQLite file: {path}")
     return sqlite_files
 
 
@@ -320,7 +306,7 @@ def create_directory(dir_path):
         try:
             makedirs(dir_path)
         except (OSError, IOError) as e:
-            logging.error("Unable to create directory {} with error: {}".format(dir_path, e))
+            logging.error(f"Unable to create directory {dir_path} with error: {e}")
             return False
 
     # Ensure the directory was actually created, and it is actually a directory
@@ -333,15 +319,16 @@ def hash_file(file_path, hash_algo=hashlib.sha256()):
     """
     # Ensure the file path exists
     if not path.exists(file_path):
-        raise IOError("The file path {} is not valid, the file does not exist".format(file_path))
+        raise IOError(
+            f"The file path {file_path} is not valid, the file does not exist"
+        )
 
     with open(file_path, 'rb') as f:
         while True:
-            # Reading is buffered, so we can read smaller chunks.
-            chunk = f.read(hash_algo.block_size)
-            if not chunk:
+            if chunk := f.read(hash_algo.block_size):
+                hash_algo.update(chunk)
+            else:
                 break
-            hash_algo.update(chunk)
     return hash_algo.hexdigest()
 
 

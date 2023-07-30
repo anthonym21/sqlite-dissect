@@ -36,13 +36,13 @@ class CommitXlsxExporter(object):
         if exists(self._xlsx_file_name):
 
             # Generate a uuid to append to the file name
-            new_file_name_for_existing_file = self._xlsx_file_name + "-" + str(uuid4())
+            new_file_name_for_existing_file = f"{self._xlsx_file_name}-{str(uuid4())}"
 
             # Rename the existing file
             rename(self._xlsx_file_name, new_file_name_for_existing_file)
 
             log_message = "File: {} already existing when creating the file for commit xlsx exporting.  The " \
-                          "file was renamed to: {} and new data will be written to the file name specified."
+                              "file was renamed to: {} and new data will be written to the file name specified."
             log_message = log_message.format(self._xlsx_file_name, new_file_name_for_existing_file)
             getLogger(LOGGER_NAME).debug(log_message)
 
@@ -92,9 +92,6 @@ class CommitXlsxExporter(object):
 
         """
 
-        # Setup the name postfix increment counter
-        name_postfix_increment = 0
-
         # Set the sheet name to be the commit name
         sheet_name = commit.name
 
@@ -107,8 +104,10 @@ class CommitXlsxExporter(object):
                 # Set it to the name already made for it from a previous call
                 sheet_name = self._long_sheet_name_translation_dictionary[sheet_name]
 
-            # The sheet name was not already in the dictionary so we need to make a new name
             else:
+
+                # Setup the name postfix increment counter
+                name_postfix_increment = 0
 
                 # Continue while we are between 0 and 9
                 while name_postfix_increment < 10:
@@ -127,7 +126,7 @@ class CommitXlsxExporter(object):
 
                         # Log a debug message for the truncation of the commit name as a sheet name
                         log_message = "Commit name: {} was truncated to: {} since it had a length of {} characters " \
-                                      "which is greater than the 31 allowed characters for a sheet name."
+                                          "which is greater than the 31 allowed characters for a sheet name."
                         log_message = log_message.format(commit.name, sheet_name, len(commit.name))
                         logger.debug(log_message)
 
@@ -143,8 +142,8 @@ class CommitXlsxExporter(object):
                 # Raise an exception if the name postfix increment counter reached 10
                 if name_postfix_increment == 10:
                     log_message = "Max number of allowed (10) increments reached for renaming the sheet with " \
-                                  "original name: {} for page type: {} due to having a length of {} characters " \
-                                  "which is greater than the 31 allowed characters while writing to xlsx file name: {}."
+                                      "original name: {} for page type: {} due to having a length of {} characters " \
+                                      "which is greater than the 31 allowed characters while writing to xlsx file name: {}."
                     log_message = log_message.format(commit.name, commit.page_type, len(commit.name),
                                                      self._xlsx_file_name)
                     logger.warn(log_message)
@@ -227,7 +226,7 @@ class CommitXlsxExporter(object):
         else:
 
             log_message = "Invalid commit page type: {} found for xlsx export on master " \
-                          "schema entry name: {} while writing to xlsx file name: {}."
+                              "schema entry name: {} while writing to xlsx file name: {}."
             log_message = log_message.format(commit.page_type, commit.name, self._xlsx_file_name)
             logger.warn(log_message)
             raise ExportError(log_message)
@@ -312,7 +311,7 @@ class CommitXlsxExporter(object):
             cell_record_column_values = []
             for record_column in cell.payload.record_columns:
                 serial_type = record_column.serial_type
-                text_affinity = True if serial_type >= 13 and serial_type % 2 == 1 else False
+                text_affinity = serial_type >= 13 and serial_type % 2 == 1
                 value = record_column.value
                 if isinstance(value, (bytearray, str)):
                     if len(value) == 0 and isinstance(value, bytearray):
@@ -325,7 +324,7 @@ class CommitXlsxExporter(object):
                             value = value.decode(UTF_8, "replace")
                         value = ILLEGAL_XML_CHARACTER_PATTERN.sub(" ", value)
                         if value.startswith("="):
-                            value = ' ' + value
+                            value = f' {value}'
                 cell_record_column_values.append(value)
 
             row = [file_type, cell.version_number, cell.page_version_number, cell.source, cell.page_number,

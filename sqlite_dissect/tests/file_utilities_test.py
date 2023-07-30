@@ -19,18 +19,14 @@ validate_page_version_history_params = [
 def test_validate_page_version_history(change, expected_result):
     # uses the version_history_test.sqlite file as a template; assumed to be valid at start
     db_filepath = abspath(join(DB_FILES, 'version_history_test.sqlite'))
-    wal_filepath = splitext(db_filepath)[0] + '.sqlite-wal'
+    wal_filepath = f'{splitext(db_filepath)[0]}.sqlite-wal'
 
     db = Database(db_filepath)
     wal = WriteAheadLog(wal_filepath)
     version_history = VersionHistory(db, wal)
 
     # no change to version_history; should evaluate to True if original was valid
-    if change == 0:
-        assert validate_page_version_history(version_history) == expected_result
-
-    # modify single values; should evaluate to False (invalid history)
-    else:
+    if change != 0:
         modified = False
 
         for version_number, version in version_history.versions.iteritems():
@@ -58,5 +54,5 @@ def test_validate_page_version_history(change, expected_result):
             if modified:
                 break
 
-        assert validate_page_version_history(version_history) == expected_result
+    assert validate_page_version_history(version_history) == expected_result
 

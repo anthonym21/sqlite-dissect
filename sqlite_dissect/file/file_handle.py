@@ -78,19 +78,19 @@ class FileHandle(object):
             """
 
             if not os.path.exists(file_identifier):
-                log_message = "The file name specified does not exist: {}".format(file_identifier)
+                log_message = f"The file name specified does not exist: {file_identifier}"
                 self._logger.error(log_message)
                 raise IOError(log_message)
 
             if not os.path.isfile(file_identifier):
-                log_message = "The file name specified is not a file: {}".format(file_identifier)
+                log_message = f"The file name specified is not a file: {file_identifier}"
                 self._logger.error(log_message)
                 raise IOError(log_message)
 
             try:
                 self.file_object = open(file_identifier, "rb")
             except IOError:
-                log_message = "Unable to open the file in \"rb\" mode with file name: {}.".format(file_identifier)
+                log_message = f'Unable to open the file in \"rb\" mode with file name: {file_identifier}.'
                 self._logger.error(log_message)
                 raise
 
@@ -173,7 +173,7 @@ class FileHandle(object):
 
         else:
 
-            log_message = "Invalid file type specified: {}.".format(self.file_type)
+            log_message = f"Invalid file type specified: {self.file_type}."
             self._logger.error(log_message)
             raise ValueError(log_message)
 

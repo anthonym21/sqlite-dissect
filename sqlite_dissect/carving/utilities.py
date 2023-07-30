@@ -74,7 +74,7 @@ def decode_varint_in_reverse(byte_array, offset, max_varint_length=9):
     unsigned_integer_value |= varint_byte
     varint_inverted_relative_offset += 1
 
-    while offset - varint_inverted_relative_offset - 1 >= 0:
+    while offset - varint_inverted_relative_offset >= 1:
 
         if varint_inverted_relative_offset > max_varint_length:
 
@@ -155,12 +155,11 @@ def calculate_serial_type_varint_length_min_max(simplified_serial_types):
     for simplified_serial_type in simplified_serial_types:
 
         if simplified_serial_type in [BLOB_SIGNATURE_IDENTIFIER, TEXT_SIGNATURE_IDENTIFIER]:
-            serial_type_varint_length_min = min(serial_type_varint_length_min, 1)
             serial_type_varint_length_max = min(serial_type_varint_length_max, 5)
         else:
-            serial_type_varint_length_min = min(serial_type_varint_length_min, 1)
             serial_type_varint_length_max = min(serial_type_varint_length_max, 1)
 
+        serial_type_varint_length_min = min(serial_type_varint_length_min, 1)
     return serial_type_varint_length_min, serial_type_varint_length_max
 
 
@@ -184,7 +183,7 @@ def generate_regex_for_simplified_serial_type(simplified_serial_type):
     elif simplified_serial_type == -1:
         return "(?:[\x0D-\x7F]|[\x80-\xFF]{1,7}[\x00-\x7F])"
     elif 0 <= simplified_serial_type <= 9:
-        return unhexlify("0{}".format(simplified_serial_type))
+        return unhexlify(f"0{simplified_serial_type}")
     else:
         log_message = "Unable to generate regular expression for simplified serial type: {}."
         log_message = log_message.format(simplified_serial_type)
@@ -257,7 +256,7 @@ def generate_signature_regex(signature, skip_first_serial_type=False):
             if blob_regex or text_regex:
 
                 if basic_serial_type_regex:
-                    basic_serial_type_regex = "[{}]".format(basic_serial_type_regex)
+                    basic_serial_type_regex = f"[{basic_serial_type_regex}]"
 
                 if blob_regex and not text_regex:
 
@@ -269,7 +268,7 @@ def generate_signature_regex(signature, skip_first_serial_type=False):
                         getLogger(LOGGER_NAME).error(log_message)
                         raise CarvingError(log_message)
 
-                    regex += "(?:{}|{})".format(basic_serial_type_regex, blob_regex)
+                    regex += f"(?:{basic_serial_type_regex}|{blob_regex})"
 
                 elif not blob_regex and text_regex:
 
@@ -282,16 +281,16 @@ def generate_signature_regex(signature, skip_first_serial_type=False):
                         getLogger(LOGGER_NAME).error(log_message)
                         raise CarvingError(log_message)
 
-                    regex += "(?:{}|{})".format(basic_serial_type_regex, text_regex)
+                    regex += f"(?:{basic_serial_type_regex}|{text_regex})"
 
-                elif blob_regex and text_regex:
+                elif blob_regex:
 
-                    var_length_regex = blob_regex + "|" + text_regex
-                    if basic_serial_type_regex:
-                        regex += "(?:{}|{})".format(basic_serial_type_regex, var_length_regex)
-                    else:
-                        regex += "(?:{})".format(var_length_regex)
-
+                    var_length_regex = f"{blob_regex}|{text_regex}"
+                    regex += (
+                        f"(?:{basic_serial_type_regex}|{var_length_regex})"
+                        if basic_serial_type_regex
+                        else f"(?:{var_length_regex})"
+                    )
                 else:
                     log_message = "No appropriate regular expressions were found for basic serial type, blob, or " \
                                   "text column signature types in the signature: {} where the skip first serial type " \
@@ -317,7 +316,7 @@ def generate_signature_regex(signature, skip_first_serial_type=False):
                     getLogger(LOGGER_NAME).error(log_message)
                     raise CarvingError(log_message)
 
-                regex += "[{}]".format(basic_serial_type_regex)
+                regex += f"[{basic_serial_type_regex}]"
 
         else:
 

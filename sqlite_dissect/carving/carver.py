@@ -57,9 +57,9 @@ class SignatureCarver(object):
 
         if not simplified_signature:
             simplified_signature = signature.recommended_schema_signature
-            logger.debug("Using recommended schema signature: {}.".format(simplified_signature))
+            logger.debug(f"Using recommended schema signature: {simplified_signature}.")
         else:
-            logger.debug("Using simplified signature: {}.".format(simplified_signature))
+            logger.debug(f"Using simplified signature: {simplified_signature}.")
 
         if not simplified_signature:
             log_message = "No signature was found."
@@ -78,10 +78,10 @@ class SignatureCarver(object):
         first_column_serial_types = simplified_signature[0]
 
         if BLOB_SIGNATURE_IDENTIFIER in first_column_serial_types or TEXT_SIGNATURE_IDENTIFIER in \
-                first_column_serial_types:
+                    first_column_serial_types:
             log_message = "A variable length serial type was found in the first column serial types: {} while" \
-                          "carving freeblocks with signatures: {}.  Signatures starting with variable length serial " \
-                          "types are not fully implemented and may result in carving false positives."
+                              "carving freeblocks with signatures: {}.  Signatures starting with variable length serial " \
+                              "types are not fully implemented and may result in carving false positives."
             log_message = log_message.format(first_column_serial_types, simplified_signature)
             logger.warn(log_message)
             warn(log_message, RuntimeWarning)
@@ -98,13 +98,11 @@ class SignatureCarver(object):
             # Get the content for the current freeblock
             freeblock_content = freeblock.content
 
-            # Initialize the list for the serial type definition match objects
-            serial_type_definition_match_objects = []
-
-            # Find all matches for the serial type definition signature pattern
-            for serial_type_definition_match in serial_type_definition_signature_pattern.finditer(freeblock_content):
-                serial_type_definition_match_objects.append(serial_type_definition_match)
-
+            serial_type_definition_match_objects = list(
+                serial_type_definition_signature_pattern.finditer(
+                    freeblock_content
+                )
+            )
             """
 
             In order to carve the freeblocks we have to start from the ending match and move backwards through the
@@ -177,10 +175,10 @@ class SignatureCarver(object):
 
                 except (CellCarvingError, ValueError):
                     log_message = "Carved b-tree cell creation failed at file offset: {} page number: {} " \
-                                  "cell source: {} in location: {} with partial serial type definition " \
-                                  "start offset: {} and partial serial type definition end offset: {} with " \
-                                  "cutoff offset of: {} number of columns: {} for master schema " \
-                                  "entry with name: {} and table name: {}."
+                                      "cell source: {} in location: {} with partial serial type definition " \
+                                      "start offset: {} and partial serial type definition end offset: {} with " \
+                                      "cutoff offset of: {} number of columns: {} for master schema " \
+                                      "entry with name: {} and table name: {}."
                     log_message = log_message.format(file_offset, freeblock.page_number, source,
                                                      CELL_LOCATION.UNALLOCATED_SPACE,
                                                      serial_type_definition_start_offset,
@@ -229,9 +227,9 @@ class SignatureCarver(object):
 
         if not simplified_signature:
             simplified_signature = signature.recommended_schema_signature
-            logger.debug("Using recommended schema signature: {}.".format(simplified_signature))
+            logger.debug(f"Using recommended schema signature: {simplified_signature}.")
         else:
-            logger.debug("Using simplified signature: {}.".format(simplified_signature))
+            logger.debug(f"Using simplified signature: {simplified_signature}.")
 
         if not simplified_signature:
             log_message = "No signature was found."
@@ -330,13 +328,9 @@ class SignatureCarver(object):
 
         """
 
-        # Initialize the list for the serial type definition match objects
-        serial_type_definition_match_objects = []
-
-        # Find all matches for the serial type definition signature pattern
-        for serial_type_definition_match in serial_type_definition_signature_pattern.finditer(unallocated_space):
-            serial_type_definition_match_objects.append(serial_type_definition_match)
-
+        serial_type_definition_match_objects = list(
+            serial_type_definition_signature_pattern.finditer(unallocated_space)
+        )
         # Initialize the carved cells
         carved_cells = []
 
@@ -397,10 +391,10 @@ class SignatureCarver(object):
 
             except (CellCarvingError, ValueError):
                 log_message = "Carved b-tree cell creation failed at file offset: {} page number: {} " \
-                              "cell source: {} in location: {} with partial serial type definition " \
-                              "start offset: {} and partial serial type definition end offset: {} with " \
-                              "cutoff offset of: {} number of columns: {} for master schema " \
-                              "entry with name: {} and table name: {}."
+                                  "cell source: {} in location: {} with partial serial type definition " \
+                                  "start offset: {} and partial serial type definition end offset: {} with " \
+                                  "cutoff offset of: {} number of columns: {} for master schema " \
+                                  "entry with name: {} and table name: {}."
                 log_message = log_message.format(file_offset, page_number, source,
                                                  CELL_LOCATION.UNALLOCATED_SPACE,
                                                  serial_type_definition_start_offset,
@@ -429,13 +423,9 @@ class SignatureCarver(object):
         # Reset the signature pattern removing the first serial type and compile
         serial_type_definition_signature_pattern = compile(generate_signature_regex(simplified_signature, True))
 
-        # Initialize the list for the partial serial type definition match objects
-        partial_serial_type_definition_match_objects = []
-
-        # Find all matches for the partial serial type definition signature pattern
-        for serial_type_definition_match in serial_type_definition_signature_pattern.finditer(unallocated_space):
-            partial_serial_type_definition_match_objects.append(serial_type_definition_match)
-
+        partial_serial_type_definition_match_objects = list(
+            serial_type_definition_signature_pattern.finditer(unallocated_space)
+        )
         """
 
         The partial serial type definition match objects should now be a superset of the serial type definition match
@@ -458,7 +448,6 @@ class SignatureCarver(object):
                                                               key=lambda x: x[0])
 
         unallocated_space_length = len(unallocated_space)
-        serial_type_definition_match_objects_indices_length = len(serial_type_definition_match_objects_indices)
         uncarved_unallocated_space_indices = []
 
         # If there were no serial type definition matches, we set the whole unallocated space to be checked
@@ -467,6 +456,7 @@ class SignatureCarver(object):
 
         else:
             last_offset = None
+            serial_type_definition_match_objects_indices_length = len(serial_type_definition_match_objects_indices)
             for index, match_object_index in enumerate(serial_type_definition_match_objects_indices):
 
                 if index == 0 and index != len(serial_type_definition_match_objects_indices) - 1:
@@ -502,7 +492,10 @@ class SignatureCarver(object):
                         uncarved_unallocated_space_indices.append((match_object_index[1], unallocated_space_length))
                         last_offset = match_object_index[1]
 
-                elif index != 0 and index != serial_type_definition_match_objects_indices_length - 1:
+                elif index not in [
+                    0,
+                    serial_type_definition_match_objects_indices_length - 1,
+                ]:
 
                     """
 
@@ -515,7 +508,7 @@ class SignatureCarver(object):
                     uncarved_unallocated_space_indices.append((last_offset, match_object_index[0]))
                     last_offset = match_object_index[1]
 
-                elif index != 0 and index == serial_type_definition_match_objects_indices_length - 1:
+                elif index != 0:
 
                     """
 
@@ -532,7 +525,7 @@ class SignatureCarver(object):
                 else:
 
                     log_message = "Found invalid use case while carving unallocated space for page number: {} " \
-                                  "starting from the unallocated space start offset: {} with signature: {}."
+                                      "starting from the unallocated space start offset: {} with signature: {}."
                     log_message = log_message.format(page_number, unallocated_space_start_offset, signature.name)
                     logger.error(log_message)
                     raise CarvingError(log_message)
@@ -554,7 +547,7 @@ class SignatureCarver(object):
                 partial_serial_type_definition_end_offset = partial_serial_type_definition_match.end(0)
 
                 if partial_serial_type_definition_start_offset >= uncarved_allocated_space_index[0] and \
-                   partial_serial_type_definition_end_offset <= uncarved_allocated_space_index[1]:
+                       partial_serial_type_definition_end_offset <= uncarved_allocated_space_index[1]:
 
                         relative_offset = unallocated_space_start_offset + partial_serial_type_definition_start_offset
                         file_offset = page_offset + relative_offset
@@ -576,10 +569,10 @@ class SignatureCarver(object):
 
                         except (CellCarvingError, ValueError):
                             log_message = "Carved b-tree cell creation failed at file offset: {} page number: {} " \
-                                          "cell source: {} in location: {} with partial serial type definition " \
-                                          "start offset: {} and partial serial type definition end offset: {} with " \
-                                          "partial cutoff offset of: {} number of columns: {} for master schema " \
-                                          "entry with name: {} and table name: {}."
+                                              "cell source: {} in location: {} with partial serial type definition " \
+                                              "start offset: {} and partial serial type definition end offset: {} with " \
+                                              "partial cutoff offset of: {} number of columns: {} for master schema " \
+                                              "entry with name: {} and table name: {}."
                             log_message = log_message.format(file_offset, page_number, source,
                                                              CELL_LOCATION.UNALLOCATED_SPACE,
                                                              partial_serial_type_definition_start_offset,

@@ -111,12 +111,12 @@ class CommitConsoleExporter(object):
         """
 
         base_string = "File Type: {} Version Number: {} Page Version Number: {} Source: {} " \
-                      "Page Number: {} Location: {} Operation: {} File Offset: {}"
+                          "Page Number: {} Location: {} Operation: {} File Offset: {}"
         for cell in cells:
             preface = base_string.format(file_type, cell.version_number, cell.page_version_number, cell.source,
                                          cell.page_number, cell.location, operation, cell.file_offset)
             row_values = stringify_cell_record(cell, database_text_encoding, page_type)
-            print(preface + " " + row_values + ".")
+            print(f"{preface} {row_values}.")
 
 
 class CommitTextExporter(object):
@@ -146,13 +146,13 @@ class CommitTextExporter(object):
         if exists(self._text_file_name):
 
             # Generate a uuid to append to the file name
-            new_file_name_for_existing_file = self._text_file_name + "-" + str(uuid4())
+            new_file_name_for_existing_file = f"{self._text_file_name}-{str(uuid4())}"
 
             # Rename the existing file
             rename(self._text_file_name, new_file_name_for_existing_file)
 
             log_message = "File: {} already existing when creating the file for commit text exporting.  The " \
-                          "file was renamed to: {} and new data will be written to the file name specified."
+                              "file was renamed to: {} and new data will be written to the file name specified."
             log_message = log_message.format(self._text_file_name, new_file_name_for_existing_file)
             getLogger(LOGGER_NAME).debug(log_message)
 
@@ -249,9 +249,9 @@ class CommitTextExporter(object):
         """
 
         base_string = "File Type: {} Version Number: {} Page Version Number: {} Source: {} " \
-                      "Page Number: {} Location: {} Operation: {} File Offset: {}"
+                          "Page Number: {} Location: {} Operation: {} File Offset: {}"
         for cell in cells:
             preface = base_string.format(file_type, cell.version_number, cell.page_version_number, cell.source,
                                          cell.page_number, cell.location, operation, cell.file_offset)
             row_values = stringify_cell_record(cell, database_text_encoding, page_type)
-            file_handle.write(preface + " " + row_values + ".\n")
+            file_handle.write(f"{preface} {row_values}" + ".\n")

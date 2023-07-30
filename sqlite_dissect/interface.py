@@ -74,7 +74,9 @@ def get_master_schema_entry(master_schema_entry_name, version_history):
     for master_schema_entry in master_schema_entries:
         if master_schema_entry.name == master_schema_entry_name:
             return master_schema_entry
-    raise Exception("Master schema entry not found for master schema entry name: %s." % master_schema_entry_name)
+    raise Exception(
+        f"Master schema entry not found for master schema entry name: {master_schema_entry_name}."
+    )
 
 
 def get_column_index(column_name, master_schema_entry_name, version_history):
@@ -82,8 +84,9 @@ def get_column_index(column_name, master_schema_entry_name, version_history):
     for column_definition in master_schema_entry.column_definitions:
         if column_definition.column_name == column_name:
             return column_definition.index
-    raise Exception("Column definition not found for column name: %s and master schema entry name: %s." %
-                    (column_name, master_schema_entry_name))
+    raise Exception(
+        f"Column definition not found for column name: {column_name} and master schema entry name: {master_schema_entry_name}."
+    )
 
 
 def select_all_from_table(table_name, version):

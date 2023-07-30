@@ -40,7 +40,7 @@ def test_record_init(page, payload_offset, payload_byte_size, bytes_on_first_pag
         assert record.start_offset == payload_offset
         assert record.byte_size == payload_byte_size
         assert record.end_offset == payload_offset + bytes_on_first_page == record.body_end_offset
-        assert record.has_overflow == (False if not overflow else True)
+        assert record.has_overflow == bool(overflow)
         assert record.bytes_on_first_page == bytes_on_first_page
         assert record.header_byte_size == decode_varint(page, payload_offset)[0]
         assert record.header_byte_size_varint_length == decode_varint(page, payload_offset)[1]

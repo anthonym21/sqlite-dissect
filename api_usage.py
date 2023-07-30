@@ -60,11 +60,12 @@ if not table_signature:
     print("Table signature not supported (\"without rowid\" table or virtual table)")
     exit(0)
 
-# Get the column indices of the columns we are interested in
-column_name_indices = {}
-for column_name in column_names:
-    column_name_indices[column_name] = sqlite_interface.get_column_index(column_name, table_name, version_history)
-
+column_name_indices = {
+    column_name: sqlite_interface.get_column_index(
+        column_name, table_name, version_history
+    )
+    for column_name in column_names
+}
 # Get a version history iterator for the table
 carve_freelists = True
 table_history_iterator = sqlite_interface.get_version_history_iterator(table_name, version_history,
@@ -75,7 +76,7 @@ for commit in table_history_iterator:
     if commit.updated and commit.carved_cells:
         carved_cells = commit.carved_cells
         for carved_cell in carved_cells.itervalues():
-            for column_name in column_name_indices.keys():
+            for column_name in column_name_indices:
                 record_column = carved_cell.payload.record_columns[column_name_indices.get(column_name)]
                 print("Commit version: %s table record column: %s has serial type: %s with value of: \"%s\"." %\
                   (commit.version_number, column_name, record_column.serial_type, record_column.value))

@@ -41,7 +41,7 @@ class WriteAheadLogFrame(object):
 
         if file_handle.file_type != FILE_TYPE.WAL:
             log_message = "The wal frame file handle file type is not {} as expected but is {} for frame index: {} " \
-                          "commit record number: {}."
+                              "commit record number: {}."
             log_message = log_message.format(FILE_TYPE.WAL, file_handle.file_type, frame_index, commit_record_number)
             logger.error(log_message)
             raise ValueError(log_message)
@@ -55,19 +55,19 @@ class WriteAheadLogFrame(object):
 
         wal_frame = file_handle.read_data(self.offset, self.frame_size)
         self.header = WriteAheadLogFrameHeader(wal_frame[:WAL_FRAME_HEADER_LENGTH])
-        self.commit_frame = True if self.header.page_size_after_commit else False
+        self.commit_frame = bool(self.header.page_size_after_commit)
         page_content = wal_frame[WAL_FRAME_HEADER_LENGTH:]
 
         if len(page_content) != file_handle.header.page_size:
             log_message = "Page content was found to be: {} when expected to be: {} as declared in the wal file " \
-                          "header for frame index: {} commit record number: {}."
+                              "header for frame index: {} commit record number: {}."
             log_message = log_message.format(len(page_content), file_handle.header.page_size,
                                              frame_index, commit_record_number)
             logger.error(log_message)
             raise WalParsingError(log_message)
 
         self.contains_sqlite_database_header = False
-        self.page_hex_type = page_content[0:1]
+        self.page_hex_type = page_content[:1]
 
         if self.page_hex_type == MASTER_PAGE_HEX_ID:
             self.page_hex_type = page_content[SQLITE_DATABASE_HEADER_LENGTH:SQLITE_DATABASE_HEADER_LENGTH + 1]
