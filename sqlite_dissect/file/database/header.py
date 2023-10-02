@@ -61,7 +61,7 @@ class DatabaseHeader(SQLiteHeader):
 
         try:
 
-            self.magic_header_string = database_header_byte_array[0:16]
+            self.magic_header_string = database_header_byte_array[:16]
 
         except error:
 
@@ -105,7 +105,7 @@ class DatabaseHeader(SQLiteHeader):
             raise
 
         if self.file_format_write_version not in [ROLLBACK_JOURNALING_MODE, WAL_JOURNALING_MODE]:
-            log_message = "The file format write version: {} is invalid.".format(self.file_format_write_version)
+            log_message = f"The file format write version: {self.file_format_write_version} is invalid."
             logger.error(log_message)
             raise HeaderParsingError(log_message)
 
@@ -119,7 +119,7 @@ class DatabaseHeader(SQLiteHeader):
             raise
 
         if self.file_format_read_version not in [ROLLBACK_JOURNALING_MODE, WAL_JOURNALING_MODE]:
-            log_message = "The file format read version: {} is invalid.".format(self.file_format_read_version)
+            log_message = f"The file format read version: {self.file_format_read_version} is invalid."
             logger.error(log_message)
             raise HeaderParsingError(log_message)
 
@@ -217,12 +217,12 @@ class DatabaseHeader(SQLiteHeader):
         else:
 
             if self.schema_format_number not in VALID_SCHEMA_FORMATS:
-                log_message = "Schema format number: {} not a valid schema format.".format(self.schema_format_number)
+                log_message = f"Schema format number: {self.schema_format_number} not a valid schema format."
                 logger.error(log_message)
                 raise HeaderParsingError(log_message)
 
             if self.database_text_encoding not in DATABASE_TEXT_ENCODINGS:
-                log_message = "Database text encoding: {} not a valid encoding.".format(self.database_text_encoding)
+                log_message = f"Database text encoding: {self.database_text_encoding} not a valid encoding."
                 logger.error(log_message)
                 raise HeaderParsingError(log_message)
 
@@ -251,7 +251,7 @@ class DatabaseHeader(SQLiteHeader):
 
         if not self.largest_root_b_tree_page_number and self.incremental_vacuum_mode:
             log_message = "The database header largest root b-tree page number was not set when the incremental " \
-                          "vacuum mode was: {}."
+                              "vacuum mode was: {}."
             log_message = log_message.format(self.incremental_vacuum_mode)
             logger.error(log_message)
             raise HeaderParsingError(log_message)
@@ -262,7 +262,7 @@ class DatabaseHeader(SQLiteHeader):
         pattern = compile(RESERVED_FOR_EXPANSION_REGEX)
         reserved_for_expansion_hex = hexlify(self.reserved_for_expansion)
         if not pattern.match(reserved_for_expansion_hex):
-            log_message = "Header space reserved for expansion is not zero: {}.".format(reserved_for_expansion_hex)
+            log_message = f"Header space reserved for expansion is not zero: {reserved_for_expansion_hex}."
             logger.error(log_message)
             raise HeaderParsingError(log_message)
 
@@ -341,7 +341,7 @@ class BTreePageHeader(object):
 
         self.root_page_only_md5_hex_digest = None
 
-        first_page_byte = page[0:1]
+        first_page_byte = page[:1]
         if first_page_byte == MASTER_PAGE_HEX_ID:
             self.contains_sqlite_database_header = True
             self.root_page_only_md5_hex_digest = get_md5_hash(page[SQLITE_DATABASE_HEADER_LENGTH:])

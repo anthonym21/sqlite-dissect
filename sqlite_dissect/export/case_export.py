@@ -17,10 +17,7 @@ def guid_list_to_objects(guids):
     """
     Converts a list of string GUIDs to the object notation with an ID prefix
     """
-    if guids is None:
-        return []
-    else:
-        return list(map(lambda g: {"@id": g}, guids))
+    return [] if guids is None else list(map(lambda g: {"@id": g}, guids))
 
 
 class CaseExporter(object):
@@ -65,17 +62,16 @@ class CaseExporter(object):
         :param options: the dictionary of key => value pairs of configuration options with which the tool was run
         :type options: dict
         """
-        configuration_options = []
-
-        # Loop through the list of provided options and add each configuration option to the CASE output
-        for option in vars(options):
-            if getattr(options, option) is not None and len(str(getattr(options, option))) > 0:
-                configuration_options.append({
-                    "@type": "uco-tool:ConfigurationSettingType",
-                    "uco-tool:itemName": option,
-                    "uco-tool:itemValue": str(getattr(options, option))
-                })
-
+        configuration_options = [
+            {
+                "@type": "uco-tool:ConfigurationSettingType",
+                "uco-tool:itemName": option,
+                "uco-tool:itemValue": str(getattr(options, option)),
+            }
+            for option in vars(options)
+            if getattr(options, option) is not None
+            and str(getattr(options, option)) != ""
+        ]
         # Build the configuration wrapper which includes the facet for the configuration
         configuration = [
             {
@@ -105,9 +101,9 @@ class CaseExporter(object):
 
             # Generate the UUID which will be returned as a reference
             if filetype is None:
-                guid = ("kb:" + str(uuid.uuid4()))
+                guid = f"kb:{str(uuid.uuid4())}"
             else:
-                guid = ("kb:" + filetype + "-" + str(uuid.uuid4()))
+                guid = f"kb:{filetype}-{str(uuid.uuid4())}"
 
             # Parse the file and get the attributes we need
             self.case['@graph'].append({
@@ -189,24 +185,24 @@ class CaseExporter(object):
 
             return guid
         else:
-            self.logger.critical('Attempting to add invalid filepath to CASE Observable export: {}'.format(filepath))
+            self.logger.critical(
+                f'Attempting to add invalid filepath to CASE Observable export: {filepath}'
+            )
 
     def link_observable_relationship(self, source_guid, target_guid, relationship):
-        self.case['@graph'].append({
-            "@id": ("kb:export-artifact-relationship-" + str(uuid.uuid4())),
-            "@type": "uco-observable:ObservableRelationship",
-            "uco-core:source": {
-                "@id": source_guid
-            },
-            "uco-core:target": {
-                "@id": target_guid
-            },
-            "uco-core:kindOfRelationship": {
-                "@type": "uco-vocabulary:ObservableObjectRelationshipVocab",
-                "@value": relationship
-            },
-            "uco-core:isDirectional": True
-        })
+        self.case['@graph'].append(
+            {
+                "@id": f"kb:export-artifact-relationship-{str(uuid.uuid4())}",
+                "@type": "uco-observable:ObservableRelationship",
+                "uco-core:source": {"@id": source_guid},
+                "uco-core:target": {"@id": target_guid},
+                "uco-core:kindOfRelationship": {
+                    "@type": "uco-vocabulary:ObservableObjectRelationshipVocab",
+                    "@value": relationship,
+                },
+                "uco-core:isDirectional": True,
+            }
+        )
 
     def add_export_artifacts(self, export_paths=None):
         """
@@ -230,7 +226,7 @@ class CaseExporter(object):
         # Ensure there is at least one GUID else don't add anything
         if len(guids) > 0:
             # Generate the UUID which will be returned as a reference
-            guid = ("kb:provenance-record-" + str(uuid.uuid4()))
+            guid = f"kb:provenance-record-{str(uuid.uuid4())}"
 
             record = {
                 "@id": guid,
@@ -248,7 +244,7 @@ class CaseExporter(object):
         Generates the header for the tool and returns the GUID for the ObservableRelationships
         """
         # Generate the UUID which will be returned as a reference
-        org_guid = ("kb:sqlite-dissect-" + str(uuid.uuid4()))
+        org_guid = f"kb:sqlite-dissect-{str(uuid.uuid4())}"
         self.case['@graph'].append({
             "@id": org_guid,
             "@type": "uco-identity:Organization",
@@ -262,7 +258,7 @@ class CaseExporter(object):
         })
 
         # Generate the UUID which will be returned as a reference
-        tool_guid = ("kb:sqlite-dissect-" + str(uuid.uuid4()))
+        tool_guid = f"kb:sqlite-dissect-{str(uuid.uuid4())}"
         self.case['@graph'].append({
             "@id": tool_guid,
             "@type": "uco-tool:Tool",
@@ -294,11 +290,11 @@ class CaseExporter(object):
             self.result_guids.append(result_provenance_guid)
 
         action = {
-            "@id": ("kb:investigative-action" + str(uuid.uuid4())),
+            "@id": f"kb:investigative-action{str(uuid.uuid4())}",
             "@type": "case-investigation:InvestigativeAction",
             "uco-action:instrument": guid_list_to_objects([tool_guid]),
             "uco-action:object": guid_list_to_objects(source_guids),
-            "uco-action:result": guid_list_to_objects(self.result_guids)
+            "uco-action:result": guid_list_to_objects(self.result_guids),
         }
 
         if self.start_datetime:
@@ -321,4 +317,4 @@ class CaseExporter(object):
         # Write the CASE export to the filesystem
         with open(export_path, 'w') as f:
             json.dump(self.case, f, ensure_ascii=False, indent=4)
-            self.logger.info('CASE formatted file has been exported to {}'.format(export_path))
+            self.logger.info(f'CASE formatted file has been exported to {export_path}')

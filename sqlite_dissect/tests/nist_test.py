@@ -18,7 +18,7 @@ def get_md5_hash(filepath):
 
 
 def fetch_pragma(db_cursor, pragma_func):
-    db_cursor.execute('PRAGMA %s' % pragma_func)
+    db_cursor.execute(f'PRAGMA {pragma_func}')
     return db_cursor.fetchone()[0]
 
 
@@ -129,7 +129,7 @@ def test_schema_reporting(db_file, tmp_path):
         for column in columns.split(","):
             actual_columns[table[0]].append(column.strip().split()[0])
 
-        db_cursor.execute("SELECT COUNT(*) FROM %s" % table[0])
+        db_cursor.execute(f"SELECT COUNT(*) FROM {table[0]}")
         actual_num_rows[table[0]] = int(db_cursor.fetchone()[0])
 
     hash_after_parsing = get_md5_hash(db_filepath)

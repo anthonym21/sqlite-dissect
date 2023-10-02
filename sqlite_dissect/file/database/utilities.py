@@ -62,7 +62,7 @@ def aggregate_leaf_cells(b_tree_page, accounted_for_cell_md5s=None, payloads_onl
     number_of_cells = 0
     cells = {}
 
-    if isinstance(b_tree_page, TableLeafPage) or isinstance(b_tree_page, IndexLeafPage):
+    if isinstance(b_tree_page, (TableLeafPage, IndexLeafPage)):
 
         number_of_cells += len(b_tree_page.cells)
 
@@ -77,13 +77,13 @@ def aggregate_leaf_cells(b_tree_page, accounted_for_cell_md5s=None, payloads_onl
                     accounted_for_cell_md5s.add(cell.md5_hex_digest)
                     cells[cell.md5_hex_digest] = cell
 
-    elif isinstance(b_tree_page, TableInteriorPage) or isinstance(b_tree_page, IndexInteriorPage):
+    elif isinstance(b_tree_page, (TableInteriorPage, IndexInteriorPage)):
 
         right_most_page_number_of_records, right_most_page_records = aggregate_leaf_cells(b_tree_page.right_most_page,
                                                                                           accounted_for_cell_md5s,
                                                                                           payloads_only)
         number_of_cells += right_most_page_number_of_records
-        cells.update(right_most_page_records)
+        cells |= right_most_page_records
 
         for cell in b_tree_page.cells:
 
@@ -95,7 +95,7 @@ def aggregate_leaf_cells(b_tree_page, accounted_for_cell_md5s=None, payloads_onl
 
     else:
 
-        log_message = "Invalid page type found: {} to aggregate cells on.".format(type(b_tree_page))
+        log_message = f"Invalid page type found: {type(b_tree_page)} to aggregate cells on."
         getLogger(LOGGER_NAME).error(log_message)
         raise ValueError(log_message)
 
@@ -199,7 +199,9 @@ def get_page_numbers_and_types_from_b_tree_page(b_tree_page):
         b_tree_page_numbers[b_tree_page.number] = PAGE_TYPE.B_TREE_INDEX_LEAF
     elif isinstance(b_tree_page, TableInteriorPage):
         b_tree_page_numbers[b_tree_page.number] = PAGE_TYPE.B_TREE_TABLE_INTERIOR
-        b_tree_page_numbers.update(get_page_numbers_and_types_from_b_tree_page(b_tree_page.right_most_page))
+        b_tree_page_numbers |= get_page_numbers_and_types_from_b_tree_page(
+            b_tree_page.right_most_page
+        )
         for b_tree_cell in b_tree_page.cells:
             b_tree_page_numbers.update(get_page_numbers_and_types_from_b_tree_page(b_tree_cell.left_child_page))
     elif isinstance(b_tree_page, IndexInteriorPage):
@@ -243,9 +245,9 @@ def get_pages_from_b_tree_page(b_tree_page):
 
     b_tree_pages = []
 
-    if isinstance(b_tree_page, TableLeafPage) or isinstance(b_tree_page, IndexLeafPage):
+    if isinstance(b_tree_page, (TableLeafPage, IndexLeafPage)):
         b_tree_pages.append(b_tree_page)
-    elif isinstance(b_tree_page, TableInteriorPage) or isinstance(b_tree_page, IndexInteriorPage):
+    elif isinstance(b_tree_page, (TableInteriorPage, IndexInteriorPage)):
         b_tree_pages.append(b_tree_page)
         b_tree_pages.extend(get_pages_from_b_tree_page(b_tree_page.right_most_page))
         for b_tree_cell in b_tree_page.cells:

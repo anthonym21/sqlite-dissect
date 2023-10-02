@@ -787,8 +787,8 @@ class BTreePage(Page):
 class TableInteriorPage(BTreePage):
 
     def __init__(self, version_interface, number):
-        header_class_name = "{}.{}".format(PAGE_HEADER_MODULE, INTERIOR_PAGE_HEADER_CLASS)
-        cell_class_name = "{}.{}".format(CELL_MODULE, TABLE_INTERIOR_CELL_CLASS)
+        header_class_name = f"{PAGE_HEADER_MODULE}.{INTERIOR_PAGE_HEADER_CLASS}"
+        cell_class_name = f"{CELL_MODULE}.{TABLE_INTERIOR_CELL_CLASS}"
         super(TableInteriorPage, self).__init__(version_interface, number, header_class_name, cell_class_name)
 
         """
@@ -799,7 +799,7 @@ class TableInteriorPage(BTreePage):
 
         if not self.header.right_most_pointer:
             log_message = "The right most pointer is not set for b-tree table interior page: {} " \
-                          "in page version: {} for version: {}."
+                              "in page version: {} for version: {}."
             log_message = log_message.format(self.number, self.page_version_number, self.version_number)
             self._logger.error(log_message)
             raise BTreePageParsingError(log_message)
@@ -813,7 +813,7 @@ class TableInteriorPage(BTreePage):
             self.right_most_page = TableLeafPage(self._version_interface, self.header.right_most_pointer)
         else:
             log_message = "The right most pointer does not point to a table interior or leaf page but instead has " \
-                          "a hex type of: {} for b-tree table interior page: {} in page version: {} for version: {}."
+                              "a hex type of: {} for b-tree table interior page: {} in page version: {} for version: {}."
             log_message = log_message.format(hexlify(right_most_pointer_page_hex_type), self.number,
                                              self.page_version_number, self.version_number)
             self._logger.error(log_message)
@@ -828,8 +828,8 @@ class TableInteriorPage(BTreePage):
 class TableLeafPage(BTreePage):
 
     def __init__(self, version, number):
-        header_class_name = "{}.{}".format(PAGE_HEADER_MODULE, LEAF_PAGE_HEADER_CLASS)
-        cell_class_name = "{}.{}".format(CELL_MODULE, TABLE_LEAF_CELL_CLASS)
+        header_class_name = f"{PAGE_HEADER_MODULE}.{LEAF_PAGE_HEADER_CLASS}"
+        cell_class_name = f"{CELL_MODULE}.{TABLE_LEAF_CELL_CLASS}"
         super(TableLeafPage, self).__init__(version, number, header_class_name, cell_class_name)
 
 
@@ -837,8 +837,8 @@ class IndexInteriorPage(BTreePage):
 
     def __init__(self, version, number):
 
-        header_class_name = "{}.{}".format(PAGE_HEADER_MODULE, INTERIOR_PAGE_HEADER_CLASS)
-        cell_class_name = "{}.{}".format(CELL_MODULE, INDEX_INTERIOR_CELL_CLASS)
+        header_class_name = f"{PAGE_HEADER_MODULE}.{INTERIOR_PAGE_HEADER_CLASS}"
+        cell_class_name = f"{CELL_MODULE}.{INDEX_INTERIOR_CELL_CLASS}"
         super(IndexInteriorPage, self).__init__(version, number, header_class_name, cell_class_name)
 
         """
@@ -849,7 +849,7 @@ class IndexInteriorPage(BTreePage):
 
         if not self.header.right_most_pointer:
             log_message = "The right most pointer is not set for b-tree index interior page: {} " \
-                          "in page version: {} for version: {}."
+                              "in page version: {} for version: {}."
             log_message = log_message.format(self.number, self.page_version_number, self.version_number)
             self._logger.error(log_message)
             raise BTreePageParsingError(log_message)
@@ -863,7 +863,7 @@ class IndexInteriorPage(BTreePage):
             self.right_most_page = IndexLeafPage(self._version_interface, self.header.right_most_pointer)
         else:
             log_message = "The right most pointer does not point to a index interior or leaf page but instead has " \
-                          "a hex type of: {} for b-tree index interior page: {} in page version: {} for version: {}."
+                              "a hex type of: {} for b-tree index interior page: {} in page version: {} for version: {}."
             log_message = log_message.format(hexlify(right_most_pointer_page_hex_type), self.number,
                                              self.page_version_number, self.version_number)
             self._logger.error(log_message)
@@ -878,8 +878,8 @@ class IndexInteriorPage(BTreePage):
 class IndexLeafPage(BTreePage):
 
     def __init__(self, version, number):
-        header_class_name = "{}.{}".format(PAGE_HEADER_MODULE, LEAF_PAGE_HEADER_CLASS)
-        cell_class_name = "{}.{}".format(CELL_MODULE, INDEX_LEAF_CELL_CLASS)
+        header_class_name = f"{PAGE_HEADER_MODULE}.{LEAF_PAGE_HEADER_CLASS}"
+        cell_class_name = f"{CELL_MODULE}.{INDEX_LEAF_CELL_CLASS}"
         super(IndexLeafPage, self).__init__(version, number, header_class_name, cell_class_name)
 
 
@@ -1195,12 +1195,7 @@ class TableLeafCell(BTreeCell):
 
         overflow = bytearray()
 
-        if not self.has_overflow:
-
-            return overflow
-
-        else:
-
+        if self.has_overflow:
             overflow_page = self.overflow_pages[self.overflow_page_number]
             overflow += overflow_page.content
             while overflow_page.next_overflow_page_number:
@@ -1209,13 +1204,13 @@ class TableLeafCell(BTreeCell):
 
             if len(overflow) != self.overflow_byte_size:
                 log_message = "The expected overflow size: {} did not match the overflow size parsed: {} " \
-                              "for b-tree table leaf cell index: {} at offset: {} for page: {} " \
-                              "in page version: {} for version: {}."
+                                  "for b-tree table leaf cell index: {} at offset: {} for page: {} " \
+                                  "in page version: {} for version: {}."
                 log_message = log_message.format(self.overflow_byte_size, len(overflow), self.index, self.start_offset,
                                                  self.page_number, self.page_version_number, self.version_number)
                 raise CellParsingError(log_message)
 
-            return overflow
+        return overflow
 
 
 class IndexInteriorCell(BTreeCell):

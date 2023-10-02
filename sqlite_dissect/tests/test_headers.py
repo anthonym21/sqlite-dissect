@@ -104,7 +104,7 @@ def test_db_header_init(permuted_database):
     else:
         db_header = DatabaseHeader(permuted_database["byte_array"])
 
-        assert db_header.magic_header_string == permuted_database["byte_array"][0:16]
+        assert db_header.magic_header_string == permuted_database["byte_array"][:16]
         assert db_header.page_size == MAXIMUM_PAGE_SIZE \
             if unpack(b">H", permuted_database["byte_array"][16:18])[0] == MAXIMUM_PAGE_SIZE_INDICATOR \
             else unpack(b">H", permuted_database["byte_array"][16:18])[0]
@@ -163,7 +163,7 @@ def test_write_ahead_log_header_init(byte_array, expected_value):
     else:
         wal_header = WriteAheadLogHeader(byte_array)
 
-        assert wal_header.magic_number == unpack(b">I", byte_array[0:4])[0]
+        assert wal_header.magic_number == unpack(b">I", byte_array[:4])[0]
         assert wal_header.file_format_version == unpack(b">I", byte_array[4:8])[0]
         assert wal_header.page_size == unpack(b">I", byte_array[8:12])[0]
         assert wal_header.checkpoint_sequence_number == unpack(b">I", byte_array[12:16])[0]
@@ -235,7 +235,10 @@ def test_wal_index_sub_header_init(wal_index_sub_header_byte_array, index, expec
 
         assert wal_index_sub_header.index == index
         assert wal_index_sub_header.endianness == ENDIANNESS.LITTLE_ENDIAN
-        assert wal_index_sub_header.file_format_version == unpack(b"<I", wal_index_sub_header_byte_array[0:4])[0]
+        assert (
+            wal_index_sub_header.file_format_version
+            == unpack(b"<I", wal_index_sub_header_byte_array[:4])[0]
+        )
         assert wal_index_sub_header.unused_padding_field == unpack(b"<I", wal_index_sub_header_byte_array[4:8])[0]
         assert wal_index_sub_header.change_counter == unpack(b"<I", wal_index_sub_header_byte_array[8:12])[0]
         assert wal_index_sub_header.initialized == ord(wal_index_sub_header_byte_array[12:13])
@@ -274,7 +277,10 @@ def test_wal_index_checkpoint_info_init(wal_index_checkpoint_info_byte_array, en
         wal_index_checkpoint_info = WriteAheadLogIndexCheckpointInfo(wal_index_checkpoint_info_byte_array, endianness)
 
         assert wal_index_checkpoint_info.endianness == endianness
-        assert wal_index_checkpoint_info.number_of_frames_backfilled_in_database == unpack(b"<I", wal_index_checkpoint_info_byte_array[0:4])[0]
+        assert (
+            wal_index_checkpoint_info.number_of_frames_backfilled_in_database
+            == unpack(b"<I", wal_index_checkpoint_info_byte_array[:4])[0]
+        )
         assert len(wal_index_checkpoint_info.reader_marks) == WAL_INDEX_READER_MARK_SIZE
 
         for index in range(WAL_INDEX_READER_MARK_SIZE):
@@ -310,8 +316,8 @@ def test_journal_header_init(rollback_journal_header_byte_array, expected_value)
     else:
         journal_header = RollbackJournalHeader(rollback_journal_header_byte_array)
 
-        assert journal_header.header_string == rollback_journal_header_byte_array[0:8]
-        
+        assert journal_header.header_string == rollback_journal_header_byte_array[:8]
+
         assert journal_header.page_count == (
             ROLLBACK_JOURNAL_ALL_CONTENT_UNTIL_END_OF_FILE \
             if rollback_journal_header_byte_array[8:12] == ROLLBACK_JOURNAL_HEADER_ALL_CONTENT.decode("hex") \

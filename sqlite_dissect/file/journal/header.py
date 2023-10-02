@@ -38,7 +38,7 @@ class RollbackJournalHeader(SQLiteHeader):
             logger.error(log_message)
             raise ValueError(log_message)
 
-        self.header_string = rollback_journal_header_byte_array[0:8]
+        self.header_string = rollback_journal_header_byte_array[:8]
 
         if self.header_string != ROLLBACK_JOURNAL_HEADER_HEX_STRING.decode("hex"):
 

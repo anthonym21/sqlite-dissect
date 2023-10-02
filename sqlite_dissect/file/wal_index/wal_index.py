@@ -35,7 +35,7 @@ class WriteAheadLogIndex(object):
                 zero = True
             else:
                 key = (data * 383) & 8191
-                log_message = "Entry {} at offset: {} is page #{} with key of {}.".format(i, start, data, key)
+                log_message = f"Entry {i} at offset: {start} is page #{data} with key of {key}."
                 logger.debug(log_message)
                 start += 4
 
@@ -52,7 +52,7 @@ class WriteAheadLogIndex(object):
                 logger.debug(log_message)
             u16_offset += 2
 
-        logger.debug("Number of entries found: {}.".format(number_found))
+        logger.debug(f"Number of entries found: {number_found}.")
 
     def __repr__(self):
         return self.__str__().encode("hex")

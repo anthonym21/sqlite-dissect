@@ -104,8 +104,8 @@ class ColumnDefinition(object):
         # Make sure the parsed lengths add up correctly to the original length
         if parsed_comments_total_length + len(parsed_column_text) != len(column_text):
             log_message = "Column index: {} with column text: {} of length: {} was not parsed correctly.  The length " \
-                          "of the parsed comments total length was: {} with the following comments: {} and the " \
-                          "length of the parsed column text was: {} as: {}."
+                              "of the parsed comments total length was: {} with the following comments: {} and the " \
+                              "length of the parsed column text was: {} as: {}."
             log_message = log_message.format(self.index, column_text, len(column_text), parsed_comments_total_length,
                                              parsed_comments, len(parsed_column_text), parsed_column_text)
             logger.error(log_message)
@@ -118,7 +118,7 @@ class ColumnDefinition(object):
         if comments:
             for comment in comments:
                 if not comment.startswith("--") and not comment.startswith("/*"):
-                    log_message = "Comment specified does not start with the schema comment prefix: {}.".format(comment)
+                    log_message = f"Comment specified does not start with the schema comment prefix: {comment}."
                     logger.error(log_message)
                     raise MasterSchemaRowParsingError(log_message)
 
@@ -128,7 +128,7 @@ class ColumnDefinition(object):
 
         # Retrieve the column name and remaining column text after the column name is removed
         self.column_name, \
-            remaining_column_text = ColumnDefinition._get_column_name_and_remaining_sql(index, parsed_column_text)
+                remaining_column_text = ColumnDefinition._get_column_name_and_remaining_sql(index, parsed_column_text)
 
         # Setup default values for the column definition fields
         self.derived_data_type_name = None
@@ -179,7 +179,7 @@ class ColumnDefinition(object):
             # Make sure an error did not occur retrieving the segment index
             if segment_index <= 0 or segment_index > len(remaining_column_text):
                 log_message = "Column name: {} with index: {} has a segment out of bounds with index: {} when the " \
-                              "remaining column text is: {} with length: {} from full column text: {}."
+                                  "remaining column text is: {} with length: {} from full column text: {}."
                 log_message = log_message.format(self.column_name, self.index, segment_index, remaining_column_text,
                                                  len(remaining_column_text), self.column_text)
                 logger.error(log_message)
@@ -189,7 +189,7 @@ class ColumnDefinition(object):
             segment = remaining_column_text[:segment_index + 1]
 
             if (len(segment) == len(remaining_column_text) or match("\w", remaining_column_text[segment_index + 1])) \
-                and ColumnDefinition._is_column_constraint_preface(segment):
+                    and ColumnDefinition._is_column_constraint_preface(segment):
 
                 """
 
@@ -319,9 +319,6 @@ class ColumnDefinition(object):
             # Set the remaining column text
             remaining_column_text = column_text[match_object.end():]
 
-            # Return the column name and remaining column text stripped of whitespace
-            return column_name, remaining_column_text.strip()
-
         elif column_text[0] == "[":
 
             # The column name is surrounded by brackets
@@ -338,9 +335,6 @@ class ColumnDefinition(object):
 
             # Set the remaining column text
             remaining_column_text = column_text[match_object.end():]
-
-            # Return the column name and remaining column text stripped of whitespace
-            return column_name, remaining_column_text.strip()
 
         elif column_text[0] == "\'":
 
@@ -359,9 +353,6 @@ class ColumnDefinition(object):
             # Set the remaining column text
             remaining_column_text = column_text[match_object.end():]
 
-            # Return the column name and remaining column text stripped of whitespace
-            return column_name, remaining_column_text.strip()
-
         elif column_text[0] == "\"":
 
             # The column name is surrounded by double quotes
@@ -378,9 +369,6 @@ class ColumnDefinition(object):
 
             # Set the remaining column text
             remaining_column_text = column_text[match_object.end():]
-
-            # Return the column name and remaining column text stripped of whitespace
-            return column_name, remaining_column_text.strip()
 
         else:
 
@@ -399,9 +387,6 @@ class ColumnDefinition(object):
                 # Parse the remaining column text
                 remaining_column_text = column_text[column_text.index(" ") + 1:]
 
-                # Return the column name and remaining column text stripped of whitespace
-                return column_name, remaining_column_text.strip()
-
             else:
 
                 # The whole column text is just the column name
@@ -412,13 +397,14 @@ class ColumnDefinition(object):
 
                 if remaining_column_text:
                     log_message = "Column text remaining when none expected for column name: {} with text: {} " \
-                                  "and remaining: {} for index: {}."
+                                      "and remaining: {} for index: {}."
                     log_message = log_message.format(column_name, column_text, remaining_column_text, index)
                     logger.error(log_message)
                     raise MasterSchemaRowParsingError(log_message)
 
-                # Return the column name and remaining column text stripped of whitespace
-                return column_name, remaining_column_text.strip()
+
+        # Return the column name and remaining column text stripped of whitespace
+        return column_name, remaining_column_text.strip()
 
     @staticmethod
     def _get_data_type(derived_data_type):
@@ -432,14 +418,14 @@ class ColumnDefinition(object):
         # Replace spaces with underscores
         derived_data_type = sub(" ", "_", derived_data_type)
 
-        for data_type in DATA_TYPE:
-
-            # We remove any numerical values from the end since sqlite does not recognize them in the data types
-            if sub("_\d+.*$", "", data_type) == derived_data_type:
-                return data_type
-
-        # If no data type was found we return an invalid data type
-        return DATA_TYPE.INVALID
+        return next(
+            (
+                data_type
+                for data_type in DATA_TYPE
+                if sub("_\d+.*$", "", data_type) == derived_data_type
+            ),
+            DATA_TYPE.INVALID,
+        )
 
     @staticmethod
     def _get_next_segment_ending_index(index, column_name, remaining_column_text):
@@ -463,7 +449,7 @@ class ColumnDefinition(object):
         # Make sure all space is trimmed from the front of the remaining column text as it should be
         if remaining_column_text[0].isspace():
             log_message = "Invalid remaining column text beginning with a space found for column " \
-                          "index: {} with name: {}: {}."
+                              "index: {} with name: {}: {}."
             log_message = log_message.format(index, column_name, remaining_column_text)
             logger.error(log_message)
             raise ValueError(log_message)
@@ -514,13 +500,10 @@ class ColumnDefinition(object):
                 else:
                     next_segment_ending_index += 1
 
+            elif next_segment_ending_index + 1 == len(remaining_column_text):
+                return next_segment_ending_index
+
             else:
-
-                # Check if this segment index equals the end of the remaining column text and if so, return it
-
-                if next_segment_ending_index + 1 == len(remaining_column_text):
-                    return next_segment_ending_index
-
                 next_segment_ending_index += 1
 
         """
@@ -565,12 +548,12 @@ class ColumnDefinition(object):
 
     def stringify(self, padding="", print_column_constraints=True):
         string = padding + "Column Text: {}\n" \
-                 + padding + "Index: {}\n" \
-                 + padding + "Column Name: {}\n" \
-                 + padding + "Derived Data Type Name: {}\n" \
-                 + padding + "Data Type: {}\n" \
-                 + padding + "Type Affinity: {}\n" \
-                 + padding + "Number of Comments: {}"
+                     + padding + "Index: {}\n" \
+                     + padding + "Column Name: {}\n" \
+                     + padding + "Derived Data Type Name: {}\n" \
+                     + padding + "Data Type: {}\n" \
+                     + padding + "Type Affinity: {}\n" \
+                     + padding + "Number of Comments: {}"
         string = string.format(self.column_text,
                                self.index,
                                self.column_name,
@@ -579,9 +562,9 @@ class ColumnDefinition(object):
                                self.type_affinity,
                                len(self.comments))
         for comment in self.comments:
-            string += "\n" + padding + "Comment: {}".format(comment)
+            string += "\n" + padding + f"Comment: {comment}"
         if print_column_constraints:
-            string += "\n" + padding + "Column Constraints: {}".format(self.column_constraints)
+            string += "\n" + padding + f"Column Constraints: {self.column_constraints}"
         return string
 
 

@@ -318,11 +318,14 @@ class VersionHistoryParser(VersionParser):
             """
 
             # Check to make sure all root page numbers are 0 as should be with virtual tables.
-            if not all(root_page_number == 0 for root_page_number in self.root_page_number_version_index.values()):
+            if any(
+                root_page_number != 0
+                for root_page_number in self.root_page_number_version_index.values()
+            ):
                 log_message = "Virtual table found with root page version index: {} where all root page numbers " \
-                              "are not equal to 0 in version history parser for master schema entry with " \
-                              "name: {} table name: {} row type: {} and sql: {} for version number: {} " \
-                              "and ending version number: {}."
+                                  "are not equal to 0 in version history parser for master schema entry with " \
+                                  "name: {} table name: {} row type: {} and sql: {} for version number: {} " \
+                                  "and ending version number: {}."
                 log_message = log_message.format(self.root_page_number_version_index,
                                                  self.name, self.table_name, self.row_type, self.sql,
                                                  self.parser_starting_version_number,
@@ -331,9 +334,9 @@ class VersionHistoryParser(VersionParser):
                 raise ValueError(log_message)
 
             log_message = "Virtual table found with root page 0 for in version history parser for master schema " \
-                          "entry with name: {} table name: {} row type: {} and sql: {} for version number: {} " \
-                          "and ending version number: {}.  An iterator will not be returned since there " \
-                          "is no content."
+                              "entry with name: {} table name: {} row type: {} and sql: {} for version number: {} " \
+                              "and ending version number: {}.  An iterator will not be returned since there " \
+                              "is no content."
             log_message = log_message.format(self.name, self.table_name, self.row_type, self.sql,
                                              self.parser_starting_version_number, self.parser_ending_version_number)
             getLogger(LOGGER_NAME).warn(log_message)
@@ -352,9 +355,12 @@ class VersionHistoryParser(VersionParser):
             return iter([])
 
     def stringify(self, padding="", print_cells=True):
-        string = ""
-        for commit in self:
-            string += "\n" + padding + "Commit:\n{}".format(commit.stringify(padding + "\t", print_cells))
+        string = "".join(
+            "\n"
+            + padding
+            + "Commit:\n{}".format(commit.stringify(padding + "\t", print_cells))
+            for commit in self
+        )
         return super(VersionHistoryParser, self).stringify(padding) + string
 
     class VersionParserIterator(object):
@@ -423,48 +429,48 @@ class VersionHistoryParser(VersionParser):
 
         def next(self):
 
-            if self._current_version_number <= self._parser_ending_version_number:
+            if self._current_version_number > self._parser_ending_version_number:
+                raise StopIteration()
+            version = self._versions[self._current_version_number]
+            root_page_number = self._root_page_number_version_index[self._current_version_number]
 
-                version = self._versions[self._current_version_number]
-                root_page_number = self._root_page_number_version_index[self._current_version_number]
+            # Create the commit object
+            commit = Commit(self._name, version.file_type, self._current_version_number,
+                            version.database_text_encoding, self._page_type, root_page_number,self._current_b_tree_page_numbers)
 
-                # Create the commit object
-                commit = Commit(self._name, version.file_type, self._current_version_number,
-                                version.database_text_encoding, self._page_type, root_page_number,self._current_b_tree_page_numbers)
+            b_tree_updated = False
 
-                b_tree_updated = False
+            # Check if this is the first version to be investigated
+            if self._current_version_number == self._parser_starting_version_number:
+                b_tree_updated = True
 
-                # Check if this is the first version to be investigated
-                if self._current_version_number == self._parser_starting_version_number:
-                    b_tree_updated = True
+            # Check if the root page number changed
+            elif root_page_number != self._root_page_number_version_index[self._current_version_number - 1]:
+                b_tree_updated = True
 
-                # Check if the root page number changed
-                elif root_page_number != self._root_page_number_version_index[self._current_version_number - 1]:
-                    b_tree_updated = True
-
-                # Check if any of the pages changed (other than the root page specifically here)
-                elif [page_number for page_number in self._current_b_tree_page_numbers
-                      if page_number in version.updated_b_tree_page_numbers]:
-                    b_tree_updated = True
+            # Check if any of the pages changed (other than the root page specifically here)
+            elif [page_number for page_number in self._current_b_tree_page_numbers
+                  if page_number in version.updated_b_tree_page_numbers]:
+                b_tree_updated = True
 
                 # Parse the b-tree page structure if it was updated
-                if b_tree_updated:
+            if b_tree_updated:
 
-                    # Get the root page and root page numbers from the first version
-                    root_page = version.get_b_tree_root_page(root_page_number)
-                    b_tree_pages = get_pages_from_b_tree_page(root_page)
-                    self._current_b_tree_page_numbers = [b_tree_page.number for b_tree_page in b_tree_pages]
+                # Get the root page and root page numbers from the first version
+                root_page = version.get_b_tree_root_page(root_page_number)
+                b_tree_pages = get_pages_from_b_tree_page(root_page)
+                self._current_b_tree_page_numbers = [b_tree_page.number for b_tree_page in b_tree_pages]
 
-                    # Update the b-tree page numbers in the commit record
-                    commit.b_tree_page_numbers = self._current_b_tree_page_numbers
+                # Update the b-tree page numbers in the commit record
+                commit.b_tree_page_numbers = self._current_b_tree_page_numbers
 
-                    updated_b_tree_page_numbers = [page_number for page_number in self._current_b_tree_page_numbers
-                                                   if page_number in version.updated_b_tree_page_numbers]
+                updated_b_tree_page_numbers = [page_number for page_number in self._current_b_tree_page_numbers
+                                               if page_number in version.updated_b_tree_page_numbers]
 
-                    # Set the updated b-tree page numbers in the commit object
-                    commit.updated_b_tree_page_numbers = updated_b_tree_page_numbers
+                # Set the updated b-tree page numbers in the commit object
+                commit.updated_b_tree_page_numbers = updated_b_tree_page_numbers
 
-                    """
+                """
 
                     Below we aggregate the cells together.  This function returns the total of cells and then
                     a dictionary of cells indexed by their cell md5 hex digest to record.  Here, we do not
@@ -474,47 +480,47 @@ class VersionHistoryParser(VersionParser):
 
                     """
 
-                    total, cells = aggregate_leaf_cells(root_page)
+                total, cells = aggregate_leaf_cells(root_page)
 
-                    if total != len(cells):
-                        log_message = "The total aggregated leaf cells: {} does not match the length of the " \
-                                      "cells parsed: {} for version: {} of page type: {} iterating between versions " \
-                                      "{} and {} over b-tree page numbers: {} with updated b-tree pages: {}."
-                        log_message = log_message.format(total, len(cells), self._current_version_number,
-                                                         self._page_type, self._parser_starting_version_number,
-                                                         self._parser_ending_version_number,
-                                                         self._current_b_tree_page_numbers,
-                                                         updated_b_tree_page_numbers)
-                        getLogger(LOGGER_NAME).error(log_message)
-                        raise VersionParsingError(log_message)
+                if total != len(cells):
+                    log_message = "The total aggregated leaf cells: {} does not match the length of the " \
+                                          "cells parsed: {} for version: {} of page type: {} iterating between versions " \
+                                          "{} and {} over b-tree page numbers: {} with updated b-tree pages: {}."
+                    log_message = log_message.format(total, len(cells), self._current_version_number,
+                                                     self._page_type, self._parser_starting_version_number,
+                                                     self._parser_ending_version_number,
+                                                     self._current_b_tree_page_numbers,
+                                                     updated_b_tree_page_numbers)
+                    getLogger(LOGGER_NAME).error(log_message)
+                    raise VersionParsingError(log_message)
 
-                    """
+                """
 
                     Go through the cells and determine which cells have been added, deleted, and/or updated.
 
                     """
 
-                    # Copy the newly found cells to a new dictionary
-                    added_cells = dict.copy(cells)
+                # Copy the newly found cells to a new dictionary
+                added_cells = dict.copy(cells)
 
-                    # Initialize the deleted cells
-                    deleted_cells = {}
+                # Initialize the deleted cells
+                deleted_cells = {}
 
-                    # Iterate through the current cells
-                    for current_cell_md5, current_cell in self._current_cells.iteritems():
+                # Iterate through the current cells
+                for current_cell_md5, current_cell in self._current_cells.iteritems():
 
-                        # Remove the cell from the added cells if it was already pre-existing
-                        if current_cell_md5 in added_cells:
-                            del added_cells[current_cell_md5]
+                    # Remove the cell from the added cells if it was already pre-existing
+                    if current_cell_md5 in added_cells:
+                        del added_cells[current_cell_md5]
 
-                        # The cell was in the previously current cells but now deleted
-                        else:
-                            deleted_cells[current_cell_md5] = current_cell
+                    # The cell was in the previously current cells but now deleted
+                    else:
+                        deleted_cells[current_cell_md5] = current_cell
 
-                    # Set the current cells to this versions cells
-                    self._current_cells = cells
+                # Set the current cells to this versions cells
+                self._current_cells = cells
 
-                    """
+                """
 
                     At this point we have the following two dictionaries:
                     added_cells:    All of the cells that were found to be new in this version for this table/index.
@@ -526,36 +532,36 @@ class VersionHistoryParser(VersionParser):
 
                     """
 
-                    if self._page_type == PAGE_TYPE.B_TREE_TABLE_LEAF:
+                if self._page_type == PAGE_TYPE.B_TREE_TABLE_LEAF:
 
-                        # Organize a added cells dictionary keyed off of row id
-                        added_cells_by_row_id = {added_cell.row_id: added_cell for added_cell in added_cells.values()}
+                    # Organize a added cells dictionary keyed off of row id
+                    added_cells_by_row_id = {added_cell.row_id: added_cell for added_cell in added_cells.values()}
 
-                        # Get the row ids of the cells that were updated by checking against the deleted cells
-                        updated_cell_row_ids = [deleted_cell.row_id for deleted_cell in deleted_cells.values()
-                                                if deleted_cell.row_id in added_cells_by_row_id]
+                    # Get the row ids of the cells that were updated by checking against the deleted cells
+                    updated_cell_row_ids = [deleted_cell.row_id for deleted_cell in deleted_cells.values()
+                                            if deleted_cell.row_id in added_cells_by_row_id]
 
-                        # Get the cells that might possibly have been updated by comparing the row ids
-                        updated_cells = {updated_cell.md5_hex_digest: updated_cell
-                                         for updated_cell in added_cells.values()
-                                         if updated_cell.row_id in updated_cell_row_ids}
+                    # Get the cells that might possibly have been updated by comparing the row ids
+                    updated_cells = {updated_cell.md5_hex_digest: updated_cell
+                                     for updated_cell in added_cells.values()
+                                     if updated_cell.row_id in updated_cell_row_ids}
 
-                        # Update the deleted cells to remove any possibly updated cells just determined
-                        deleted_cells = {deleted_cell.md5_hex_digest: deleted_cell
-                                         for deleted_cell in deleted_cells.values()
-                                         if deleted_cell.row_id not in updated_cell_row_ids}
+                    # Update the deleted cells to remove any possibly updated cells just determined
+                    deleted_cells = {deleted_cell.md5_hex_digest: deleted_cell
+                                     for deleted_cell in deleted_cells.values()
+                                     if deleted_cell.row_id not in updated_cell_row_ids}
 
-                        # Before we can set the added cells, we need to remove the updated cells detected above
-                        added_cells = {added_cell.md5_hex_digest: added_cell
-                                       for added_cell in added_cells.values()
-                                       if added_cell.md5_hex_digest not in updated_cells}
+                    # Before we can set the added cells, we need to remove the updated cells detected above
+                    added_cells = {added_cell.md5_hex_digest: added_cell
+                                   for added_cell in added_cells.values()
+                                   if added_cell.md5_hex_digest not in updated_cells}
 
-                        # Set the added, updated, and deleted cells
-                        commit.added_cells = added_cells
-                        commit.updated_cells = updated_cells
-                        commit.deleted_cells = deleted_cells
+                    # Set the added, updated, and deleted cells
+                    commit.added_cells = added_cells
+                    commit.updated_cells = updated_cells
+                    commit.deleted_cells = deleted_cells
 
-                        """
+                    """
 
                         Right now we only carve if the signature is specified and only from pages that were updated in
                         this particular b-tree in this version.
@@ -565,72 +571,71 @@ class VersionHistoryParser(VersionParser):
 
                         """
 
-                        if self._signature:
-                            log_message = "Carving table master schema entry name: {} for page type: {} for version: " \
-                                          "{} with root page: {} between versions {} and {} over b-tree page " \
-                                          "numbers: {} with updated b-tree pages: {}."
-                            log_message = log_message.format(self._signature.name, self._page_type,
-                                                             self._current_version_number,
-                                                             root_page_number, self._parser_starting_version_number,
-                                                             self._parser_ending_version_number,
-                                                             self._current_b_tree_page_numbers,
-                                                             updated_b_tree_page_numbers)
-                            getLogger(LOGGER_NAME).debug(log_message)
-
-                            # Initialize the carved cells
-                            carved_cells = []
-
-                            b_tree_pages_by_number = {b_tree_page.number: b_tree_page for b_tree_page in b_tree_pages}
-
-                            for updated_b_tree_page_number in updated_b_tree_page_numbers:
-
-                                page = b_tree_pages_by_number[updated_b_tree_page_number]
-
-                                # For carving freeblocks make sure the page is a b-tree page and not overflow
-                                if isinstance(page, BTreePage):
-                                    carvings = SignatureCarver.carve_freeblocks(version, CELL_SOURCE.B_TREE,
-                                                                                page.freeblocks, self._signature)
-                                    carved_cells.extend(carvings)
-
-                                # Carve unallocated space
-                                carvings = SignatureCarver.carve_unallocated_space(version, CELL_SOURCE.B_TREE,
-                                                                                   updated_b_tree_page_number,
-                                                                                   page.unallocated_space_start_offset,
-                                                                                   page.unallocated_space,
-                                                                                   self._signature)
-                                carved_cells.extend(carvings)
-
-                            # Remove all carved cells that may be duplicates from previous version carvings
-                            carved_cells = {carved_cell.md5_hex_digest: carved_cell for carved_cell in carved_cells
-                                            if carved_cell.md5_hex_digest not in self._carved_cell_md5_hex_digests}
-
-                            # Update the carved cells in the commit object
-                            commit.carved_cells.update(carved_cells)
-
-                            # Update the carved cell md5 hex digests
-                            self._carved_cell_md5_hex_digests.extend([cell_md5_hex_digest
-                                                                      for cell_md5_hex_digest in carved_cells.keys()])
-
-                    elif self._page_type == PAGE_TYPE.B_TREE_INDEX_LEAF:
-
-                        # Set the added cells
-                        commit.added_cells = added_cells
-
-                        # As noted above, we will not define updates for index cells yet so just set the deleted cells
-                        commit.deleted_cells = deleted_cells
-
-                    else:
-                        log_message = "Invalid page type: {} found for version: {} iterating between versions {} " \
-                                      "and {} over b-tree page numbers: {} with updated b-tree pages: {}."
-                        log_message = log_message.format(self._page_type, self._current_version_number,
-                                                         self._parser_starting_version_number,
+                    if self._signature:
+                        log_message = "Carving table master schema entry name: {} for page type: {} for version: " \
+                                              "{} with root page: {} between versions {} and {} over b-tree page " \
+                                              "numbers: {} with updated b-tree pages: {}."
+                        log_message = log_message.format(self._signature.name, self._page_type,
+                                                         self._current_version_number,
+                                                         root_page_number, self._parser_starting_version_number,
                                                          self._parser_ending_version_number,
                                                          self._current_b_tree_page_numbers,
                                                          updated_b_tree_page_numbers)
-                        getLogger(LOGGER_NAME).error(log_message)
-                        raise VersionParsingError(log_message)
+                        getLogger(LOGGER_NAME).debug(log_message)
 
-                """
+                        # Initialize the carved cells
+                        carved_cells = []
+
+                        b_tree_pages_by_number = {b_tree_page.number: b_tree_page for b_tree_page in b_tree_pages}
+
+                        for updated_b_tree_page_number in updated_b_tree_page_numbers:
+
+                            page = b_tree_pages_by_number[updated_b_tree_page_number]
+
+                            # For carving freeblocks make sure the page is a b-tree page and not overflow
+                            if isinstance(page, BTreePage):
+                                carvings = SignatureCarver.carve_freeblocks(version, CELL_SOURCE.B_TREE,
+                                                                            page.freeblocks, self._signature)
+                                carved_cells.extend(carvings)
+
+                            # Carve unallocated space
+                            carvings = SignatureCarver.carve_unallocated_space(version, CELL_SOURCE.B_TREE,
+                                                                               updated_b_tree_page_number,
+                                                                               page.unallocated_space_start_offset,
+                                                                               page.unallocated_space,
+                                                                               self._signature)
+                            carved_cells.extend(carvings)
+
+                        # Remove all carved cells that may be duplicates from previous version carvings
+                        carved_cells = {carved_cell.md5_hex_digest: carved_cell for carved_cell in carved_cells
+                                        if carved_cell.md5_hex_digest not in self._carved_cell_md5_hex_digests}
+
+                        # Update the carved cells in the commit object
+                        commit.carved_cells.update(carved_cells)
+
+                            # Update the carved cell md5 hex digests
+                        self._carved_cell_md5_hex_digests.extend(list(carved_cells.keys()))
+
+                elif self._page_type == PAGE_TYPE.B_TREE_INDEX_LEAF:
+
+                    # Set the added cells
+                    commit.added_cells = added_cells
+
+                    # As noted above, we will not define updates for index cells yet so just set the deleted cells
+                    commit.deleted_cells = deleted_cells
+
+                else:
+                    log_message = "Invalid page type: {} found for version: {} iterating between versions {} " \
+                                          "and {} over b-tree page numbers: {} with updated b-tree pages: {}."
+                    log_message = log_message.format(self._page_type, self._current_version_number,
+                                                     self._parser_starting_version_number,
+                                                     self._parser_ending_version_number,
+                                                     self._current_b_tree_page_numbers,
+                                                     updated_b_tree_page_numbers)
+                    getLogger(LOGGER_NAME).error(log_message)
+                    raise VersionParsingError(log_message)
+
+            """
 
                 Note:  The outer class checks on if the signature is defined in relation to the carving of freelist
                        pages being set and handles it accordingly.  Here we can assume that the signature is defined
@@ -639,22 +644,17 @@ class VersionHistoryParser(VersionParser):
                 """
 
                 # See if we are also
-                if self._carve_freelist_pages:
+            if self._carve_freelist_pages:
 
-                    freelist_pages_updated = False
-
-                    # Check if this is the first version to be investigated
-                    if self._current_version_number == self._parser_starting_version_number:
-                        freelist_pages_updated = True
-
-                    # Check if the freelist pages were modified in this version
-                    elif version.freelist_pages_modified:
-                        freelist_pages_updated = True
-
+                freelist_pages_updated = bool(
+                    self._current_version_number
+                    == self._parser_starting_version_number
+                    or version.freelist_pages_modified
+                )
                     # Carve the freelist pages if any were updated
-                    if freelist_pages_updated:
+                if freelist_pages_updated:
 
-                        """
+                    """
 
                         Note:  We only have to worry about caring the B_TREE_TABLE_LEAF pages right now since this is
                                the only page really supported in carving so far.  The super class already prints the
@@ -664,67 +664,63 @@ class VersionHistoryParser(VersionParser):
 
                         """
 
-                        if self._page_type == PAGE_TYPE.B_TREE_TABLE_LEAF:
+                    if self._page_type == PAGE_TYPE.B_TREE_TABLE_LEAF:
 
-                            # Populate the updated freelist pages into a dictionary keyed by page number
-                            updated_freelist_pages = {}
-                            freelist_trunk_page = version.first_freelist_trunk_page
-                            while freelist_trunk_page:
-                                if freelist_trunk_page.number in version.updated_page_numbers:
-                                    updated_freelist_pages[freelist_trunk_page.number] = freelist_trunk_page
-                                for freelist_leaf_page in freelist_trunk_page.freelist_leaf_pages:
-                                    if freelist_leaf_page.number in version.updated_page_numbers:
-                                        updated_freelist_pages[freelist_leaf_page.number] = freelist_leaf_page
-                                freelist_trunk_page = freelist_trunk_page.next_freelist_trunk_page
+                        # Populate the updated freelist pages into a dictionary keyed by page number
+                        updated_freelist_pages = {}
+                        freelist_trunk_page = version.first_freelist_trunk_page
+                        while freelist_trunk_page:
+                            if freelist_trunk_page.number in version.updated_page_numbers:
+                                updated_freelist_pages[freelist_trunk_page.number] = freelist_trunk_page
+                            for freelist_leaf_page in freelist_trunk_page.freelist_leaf_pages:
+                                if freelist_leaf_page.number in version.updated_page_numbers:
+                                    updated_freelist_pages[freelist_leaf_page.number] = freelist_leaf_page
+                            freelist_trunk_page = freelist_trunk_page.next_freelist_trunk_page
 
-                            # Update the commit object
-                            commit.freelist_pages_carved = True
-                            commit.updated_freelist_page_numbers = updated_freelist_pages.keys()
+                        # Update the commit object
+                        commit.freelist_pages_carved = True
+                        commit.updated_freelist_page_numbers = updated_freelist_pages.keys()
 
-                            log_message = "Carving freelist pages for table master schema entry name: {} " \
-                                          "for page type: {} for version: {} with root page: {} between versions {} " \
-                                          "and {} over updated freelist pages: {}."
-                            log_message = log_message.format(self._signature.name, self._page_type,
-                                                             self._current_version_number,
-                                                             root_page_number, self._parser_starting_version_number,
-                                                             self._parser_ending_version_number,
-                                                             updated_freelist_pages.keys())
-                            getLogger(LOGGER_NAME).debug(log_message)
+                        log_message = "Carving freelist pages for table master schema entry name: {} " \
+                                              "for page type: {} for version: {} with root page: {} between versions {} " \
+                                              "and {} over updated freelist pages: {}."
+                        log_message = log_message.format(self._signature.name, self._page_type,
+                                                         self._current_version_number,
+                                                         root_page_number, self._parser_starting_version_number,
+                                                         self._parser_ending_version_number,
+                                                         updated_freelist_pages.keys())
+                        getLogger(LOGGER_NAME).debug(log_message)
 
-                            # Initialize the carved cells
-                            carved_cells = []
+                        # Initialize the carved cells
+                        carved_cells = []
 
-                            for freelist_page_number, freelist_page in updated_freelist_pages.iteritems():
+                        for freelist_page_number, freelist_page in updated_freelist_pages.iteritems():
 
-                                # Carve unallocated space
-                                carvings = SignatureCarver.carve_unallocated_space(version, CELL_SOURCE.FREELIST,
-                                                                                   freelist_page_number,
-                                                                                   freelist_page.
-                                                                                   unallocated_space_start_offset,
-                                                                                   freelist_page.unallocated_space,
-                                                                                   self._signature)
+                            # Carve unallocated space
+                            carvings = SignatureCarver.carve_unallocated_space(version, CELL_SOURCE.FREELIST,
+                                                                               freelist_page_number,
+                                                                               freelist_page.
+                                                                               unallocated_space_start_offset,
+                                                                               freelist_page.unallocated_space,
+                                                                               self._signature)
 
-                                carved_cells.extend(carvings)
+                            carved_cells.extend(carvings)
 
-                            # Remove all carved cells that may be duplicates from previous version carvings
-                            carved_cells = {carved_cell.md5_hex_digest: carved_cell for carved_cell in carved_cells
-                                            if carved_cell.md5_hex_digest not in self._carved_cell_md5_hex_digests}
+                        # Remove all carved cells that may be duplicates from previous version carvings
+                        carved_cells = {carved_cell.md5_hex_digest: carved_cell for carved_cell in carved_cells
+                                        if carved_cell.md5_hex_digest not in self._carved_cell_md5_hex_digests}
 
-                            # Update the carved cells in the commit object
-                            commit.carved_cells.update(carved_cells)
+                        # Update the carved cells in the commit object
+                        commit.carved_cells.update(carved_cells)
 
                             # Update the carved cell md5 hex digests
-                            self._carved_cell_md5_hex_digests.extend([cell_md5_hex_digest
-                                                                     for cell_md5_hex_digest in carved_cells.keys()])
+                        self._carved_cell_md5_hex_digests.extend(list(carved_cells.keys()))
 
-                # Increment the current version number
-                self._current_version_number += 1
+            # Increment the current version number
+            self._current_version_number += 1
 
-                # Return the commit object
-                return commit
-
-            else:
-                raise StopIteration()
+            # Return the commit object
+            return commit
 
 
 class Commit(object):
@@ -810,4 +806,11 @@ class Commit(object):
 
     @property
     def updated(self):
-        return True if (self.added_cells or self.deleted_cells or self.updated_cells or self.carved_cells) else False
+        return bool(
+            (
+                self.added_cells
+                or self.deleted_cells
+                or self.updated_cells
+                or self.carved_cells
+            )
+        )

@@ -27,7 +27,7 @@ class TableConstraint(object):
         if comments:
             for comment in comments:
                 if not comment.startswith("--") or not comment.startswith("/*"):
-                    log_message = "Comment specified does not start with the schema comment prefix: {}.".format(comment)
+                    log_message = f"Comment specified does not start with the schema comment prefix: {comment}."
                     logger.error(log_message)
                     raise MasterSchemaRowParsingError(log_message)
 
@@ -41,7 +41,7 @@ class TableConstraint(object):
 
     def stringify(self, padding=""):
         string = padding + "Index: {}\n" \
-                 + padding + "Constraint: {}"
+                     + padding + "Constraint: {}"
         for comment in self.comments:
-            string += "\n" + padding + "Comment: {}".format(comment)
+            string += "\n" + padding + f"Comment: {comment}"
         return string.format(self.index, self.constraint)

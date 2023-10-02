@@ -36,9 +36,7 @@ stringify_version_pages(version, padding="")
 
 
 def get_page_breakdown(pages):
-    page_breakdown = {}
-    for page_type in PAGE_TYPE:
-        page_breakdown[page_type] = []
+    page_breakdown = {page_type: [] for page_type in PAGE_TYPE}
     for page_number, page in pages.iteritems():
         page_breakdown[page.page_type].append(page_number)
     return page_breakdown
@@ -137,7 +135,10 @@ def stringify_cell_record(cell, database_text_encoding, page_type):
 
         column_values = []
         for record_column in cell.payload.record_columns:
-            text_affinity = True if record_column.serial_type >= 13 and record_column.serial_type % 2 == 1 else False
+            text_affinity = (
+                record_column.serial_type >= 13
+                and record_column.serial_type % 2 == 1
+            )
             value = record_column.value
             if record_column.value:
                 if text_affinity:
@@ -147,13 +148,16 @@ def stringify_cell_record(cell, database_text_encoding, page_type):
             else:
                 column_values.append("NULL")
         content = "(" + ", ".join(column_values) + ")"
-        return "#{}: {}".format(cell.row_id, content)
+        return f"#{cell.row_id}: {content}"
 
     elif page_type == PAGE_TYPE.B_TREE_INDEX_LEAF:
 
         column_values = []
         for record_column in cell.payload.record_columns:
-            text_affinity = True if record_column.serial_type >= 13 and record_column.serial_type % 2 == 1 else False
+            text_affinity = (
+                record_column.serial_type >= 13
+                and record_column.serial_type % 2 == 1
+            )
             value = record_column.value
             if record_column.value:
                 if text_affinity:
@@ -162,9 +166,7 @@ def stringify_cell_record(cell, database_text_encoding, page_type):
                     column_values.append(str(value))
             else:
                 column_values.append("NULL")
-        content = "(" + ", ".join(column_values) + ")"
-        return content
-
+        return "(" + ", ".join(column_values) + ")"
     else:
         log_message = "Invalid page type specified for stringify cell record: {}.  Page type should " \
                       "be either {} or {}."
@@ -174,10 +176,10 @@ def stringify_cell_record(cell, database_text_encoding, page_type):
 
 
 def stringify_cell_records(cells, database_text_encoding, page_type):
-    cell_records = set()
-    for cell in cells:
-        cell_records.add(stringify_cell_record(cell, database_text_encoding, page_type))
-    return cell_records
+    return {
+        stringify_cell_record(cell, database_text_encoding, page_type)
+        for cell in cells
+    }
 
 
 def stringify_master_schema_version(version):
@@ -260,14 +262,18 @@ def stringify_page_history(version_history, padding=""):
 
 
 def stringify_page_information(version, padding=""):
-    string = padding + "Page Breakdown:"
+    string = f"{padding}Page Breakdown:"
     for page_type, page_array in get_page_breakdown(version.pages).iteritems():
         page_array_length = len(page_array)
         string += "\n" + padding + "\t" + "{}: {} Page Numbers: {}"
         string = string.format(page_type, page_array_length, page_array)
     string += "\n" + padding + "Page Structure:\n{}".format(stringify_page_structure(version, padding + "\t"))
     if version.pointer_map_pages:
-        string += "\n" + padding + "Pointer Map Entry Breakdown across {} Pages:".format(version.database_size_in_pages)
+        string += (
+            "\n"
+            + padding
+            + f"Pointer Map Entry Breakdown across {version.database_size_in_pages} Pages:"
+        )
         for pointer_map_entry_breakdown in get_pointer_map_entries_breakdown(version):
             string += "\n" + padding + "\t" + "Pointer Map Page {}: Page {} -> {} ({}) had Pointer Page Type (Hex) {}"
             string = string.format(pointer_map_entry_breakdown[0], pointer_map_entry_breakdown[1],
@@ -278,28 +284,42 @@ def stringify_page_information(version, padding=""):
 
 def stringify_page_structure(version, padding=""):
 
-    string = padding + "{} Pages of {} bytes".format(version.database_size_in_pages, version.page_size)
+    string = f"{padding}{version.database_size_in_pages} Pages of {version.page_size} bytes"
 
     string += "\n" + padding + "Database Root Page:"
     string += stringify_b_tree(version, version.root_page, padding + "\t")
 
-    pointer_map_pages = version.pointer_map_pages
-    if pointer_map_pages:
+    if pointer_map_pages := version.pointer_map_pages:
         for pointer_map_page in pointer_map_pages:
-            string += "\n" + padding + "Pointer Map Page -> {}".format(pointer_map_page.number)
+            string += "\n" + padding + f"Pointer Map Page -> {pointer_map_page.number}"
 
-    freelist_trunk_page = version.first_freelist_trunk_page
-    if freelist_trunk_page:
-        string += "\n" + padding + "Freelist Trunk Page -> {}".format(freelist_trunk_page.number)
+    if freelist_trunk_page := version.first_freelist_trunk_page:
+        string += (
+            "\n"
+            + padding
+            + f"Freelist Trunk Page -> {freelist_trunk_page.number}"
+        )
         freelist_padding = padding + "\t"
         for freelist_leaf_page in freelist_trunk_page.freelist_leaf_pages:
-            string += "\n" + freelist_padding + "Freelist Leaf Page -> {}".format(freelist_leaf_page.number)
+            string += (
+                "\n"
+                + freelist_padding
+                + f"Freelist Leaf Page -> {freelist_leaf_page.number}"
+            )
         while freelist_trunk_page.next_freelist_trunk_page:
             freelist_trunk_page = freelist_trunk_page.next_freelist_trunk_page
-            string += "\n" + freelist_padding + "Freelist Trunk Page -> {}".format(freelist_trunk_page.number)
+            string += (
+                "\n"
+                + freelist_padding
+                + f"Freelist Trunk Page -> {freelist_trunk_page.number}"
+            )
             freelist_padding += "\t"
             for freelist_leaf_page in freelist_trunk_page.freelist_leaf_pages:
-                string += "\n" + freelist_padding + "Freelist Leaf Page -> {}".format(freelist_leaf_page.number)
+                string += (
+                    "\n"
+                    + freelist_padding
+                    + f"Freelist Leaf Page -> {freelist_leaf_page.number}"
+                )
 
     if version.master_schema:
         string += "\n" + padding + "Master Schema Root Pages:"
@@ -347,20 +367,19 @@ def stringify_unallocated_space(version, padding="", include_empty_space=True):
                 calculated_total_fragmented_bytes += page.header.number_of_fragmented_free_bytes
 
     string += "\n" if string else ""
-    string += padding + "Calculated Total Fragmented Bytes: {}".format(calculated_total_fragmented_bytes)
+    string += f"{padding}Calculated Total Fragmented Bytes: {calculated_total_fragmented_bytes}"
     return string
 
 
 def stringify_version_pages(version, padding=""):
-    string = padding + "Version {} with {} of {} Pages: {}".format(version.version_number,
-                                                                   len(version.updated_page_numbers),
-                                                                   version.database_size_in_pages,
-                                                                   version.updated_page_numbers)
+    string = f"{padding}Version {version.version_number} with {len(version.updated_page_numbers)} of {version.database_size_in_pages} Pages: {version.updated_page_numbers}"
 
     page_versions = {}
     for page_number, page_version_number in version.page_version_index.iteritems():
         if page_version_number in page_versions:
-            page_versions[page_version_number] = page_versions[page_version_number] + ", " + str(page_number)
+            page_versions[
+                page_version_number
+            ] = f"{page_versions[page_version_number]}, {str(page_number)}"
         else:
             page_versions[page_version_number] = str(page_number)
 

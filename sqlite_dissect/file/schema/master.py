@@ -111,7 +111,7 @@ class MasterSchema(object):
 
             """
 
-            log_message = "The root page is not a table page but is a: {}.".format(type(self.root_page))
+            log_message = f"The root page is not a table page but is a: {type(self.root_page)}."
             logger.error(log_message)
             raise ValueError(log_message)
 
@@ -132,14 +132,14 @@ class MasterSchema(object):
 
             if b_tree_root_page_header.number_of_cells_on_page != 0:
                 log_message = "The b-tree root page header has a cell count of: {} where the master schema entry " \
-                              "data was not set in version: {}."
+                                  "data was not set in version: {}."
                 log_message = log_message.format(b_tree_root_page_header.number_of_cells_on_page, self.version_number)
                 logger.error(log_message)
                 raise MasterSchemaParsingError(log_message)
 
             if b_tree_root_page_header.cell_content_offset != self._version_interface.page_size:
                 log_message = "The b-tree root page cell content offset is: {} when it should match the page " \
-                              "size: {} where the master schema entry data was not set in version: {}."
+                                  "size: {} where the master schema entry data was not set in version: {}."
                 log_message = log_message.format(b_tree_root_page_header.cell_content_offset,
                                                  self._version_interface.page_size, self.version_number)
                 logger.error(log_message)
@@ -147,7 +147,7 @@ class MasterSchema(object):
 
             if isinstance(b_tree_root_page_header, InteriorPageHeader):
                 log_message = "The b-tree root page is an interior table page where the master schema entry data " \
-                              "was not set in version: {}."
+                                  "was not set in version: {}."
                 log_message = log_message.format(self.version_number)
                 logger.error(log_message)
                 raise MasterSchemaParsingError(log_message)
@@ -178,7 +178,7 @@ class MasterSchema(object):
             # Make sure the database text encoding is set.
             if not self._version_interface.database_text_encoding:
                 log_message = "Master schema entries were found, however no database text encoding as been set yet " \
-                              "as expected in version: {}."
+                                  "as expected in version: {}."
                 log_message = log_message.format(self.version_number)
                 logger.error(log_message)
                 raise MasterSchemaParsingError(log_message)
@@ -358,7 +358,7 @@ class MasterSchema(object):
         record_columns = dict(map(lambda x: [x.index, x], cell.payload.record_columns))
 
         if MASTER_SCHEMA_COLUMN.TYPE not in record_columns:
-            log_message = "No type column found in record columns for cell index: {}.".format(cell.index)
+            log_message = f"No type column found in record columns for cell index: {cell.index}."
             logger.error(log_message)
             raise MasterSchemaParsingError(log_message)
 
@@ -371,7 +371,7 @@ class MasterSchema(object):
         row_type = record_columns[MASTER_SCHEMA_COLUMN.TYPE].value.decode(database_text_encoding)
 
         if MASTER_SCHEMA_COLUMN.SQL not in record_columns:
-            log_message = "No sql column found in record columns for cell index: {}.".format(cell.index)
+            log_message = f"No sql column found in record columns for cell index: {cell.index}."
             logger.error(log_message)
             raise MasterSchemaParsingError(log_message)
 
@@ -392,9 +392,10 @@ class MasterSchema(object):
         logger = getLogger(LOGGER_NAME)
 
         pages = [b_tree_table_interior_page.right_most_page]
-        for b_tree_table_interior_cell in b_tree_table_interior_page.cells:
-            pages.append(b_tree_table_interior_cell.left_child_page)
-
+        pages.extend(
+            b_tree_table_interior_cell.left_child_page
+            for b_tree_table_interior_cell in b_tree_table_interior_page.cells
+        )
         """
 
         The master schema entry data attribute below is a dictionary with up to four keys in it representing each of
@@ -589,8 +590,9 @@ class MasterSchemaRow(object):
 
         """
 
-        master_schema_entry_identifier_string = "{}{}{}{}".format(self.row_id, self.row_type, self.name,
-                                                                  self.table_name, self.sql)
+        master_schema_entry_identifier_string = (
+            f"{self.row_id}{self.row_type}{self.name}{self.table_name}"
+        )
         self.md5_hash_identifier = get_md5_hash(master_schema_entry_identifier_string)
 
     def __repr__(self):
@@ -601,18 +603,18 @@ class MasterSchemaRow(object):
 
     def stringify(self, padding="", print_record_columns=True):
         string = padding + "Version Number: {}\n" \
-                 + padding + "Page Version Number: {}\n" \
-                 + padding + "B-Tree Table Leaf Page Number: {}\n" \
-                 + padding + "Row ID: {}\n" \
-                 + padding + "Row MD5 Hex Digest: {}\n" \
-                 + padding + "Record MD5 Hex Digest: {}\n" \
-                 + padding + "Row Type: {}\n" \
-                 + padding + "Name: {}\n" \
-                 + padding + "Table Name: {}\n" \
-                 + padding + "Root Page Number: {}\n" \
-                 + padding + "SQL: {}\n" \
-                 + padding + "SQL Has Comments: {}\n" \
-                 + padding + "MD5 Hash Identifier: {}"
+                     + padding + "Page Version Number: {}\n" \
+                     + padding + "B-Tree Table Leaf Page Number: {}\n" \
+                     + padding + "Row ID: {}\n" \
+                     + padding + "Row MD5 Hex Digest: {}\n" \
+                     + padding + "Record MD5 Hex Digest: {}\n" \
+                     + padding + "Row Type: {}\n" \
+                     + padding + "Name: {}\n" \
+                     + padding + "Table Name: {}\n" \
+                     + padding + "Root Page Number: {}\n" \
+                     + padding + "SQL: {}\n" \
+                     + padding + "SQL Has Comments: {}\n" \
+                     + padding + "MD5 Hash Identifier: {}"
         string = string.format(self.version_number,
                                self.page_version_number,
                                self.b_tree_table_leaf_page_number,
@@ -627,11 +629,11 @@ class MasterSchemaRow(object):
                                self.sql_has_comments,
                                self.md5_hash_identifier)
         for comment in self.comments:
-            string += "\n" + padding + "Comment: {}".format(comment)
+            string += "\n" + padding + f"Comment: {comment}"
         if print_record_columns:
             for index, record_column in self.record_columns.iteritems():
                 string += "\n" \
-                          + padding + "Record Column {}:\n{}:".format(index, record_column.stringify(padding + "\t"))
+                              + padding + "Record Column {}:\n{}:".format(index, record_column.stringify(padding + "\t"))
         return string
 
     @staticmethod
@@ -648,7 +650,7 @@ class MasterSchemaRow(object):
 
         if row_type not in [MASTER_SCHEMA_ROW_TYPE.TABLE, MASTER_SCHEMA_ROW_TYPE.INDEX]:
             log_message = "Invalid row type: {} defined when parsing master schema row name: {} from sql: {} when " \
-                          "type {} or {} was expected."
+                              "type {} or {} was expected."
             log_message = log_message.format(row_type, name, sql,
                                              MASTER_SCHEMA_ROW_TYPE.TABLE, MASTER_SCHEMA_ROW_TYPE.INDEX)
             logger.error(log_message)
@@ -779,14 +781,14 @@ class MasterSchemaRow(object):
                 """
 
                 # See if the character is a single space or an opening parenthesis, or comment indicator
-                if character == '\n' or character == ' ' or character == '(' or character == '-' or character == '/':
+                if character in ['\n', ' ', '(', '-', '/']:
 
                     # Check to make sure the full comment indicators were found for "--" and "/*"
                     if (character == '-' and remaining_sql_command[index + 1] != '-') or \
-                            (character == '/' and remaining_sql_command[index + 1] != '*'):
+                                (character == '/' and remaining_sql_command[index + 1] != '*'):
 
                         log_message = "Comment indicator '{}' found followed by an invalid secondary comment " \
-                                      "indicator: {} found in {} name in sql for {} row name: {} and sql: {}."
+                                          "indicator: {} found in {} name in sql for {} row name: {} and sql: {}."
                         log_message = log_message.format(character, remaining_sql_command[index + 1],
                                                          row_type, row_type, name, sql)
                         logger.error(log_message)
@@ -802,10 +804,9 @@ class MasterSchemaRow(object):
                     # Return the parsed name and remaining sql command
                     return parsed_name, remaining_sql_command
 
-                # See if the character is a "." since this would apply a schema name which we know shouldn't exist.
                 elif character == '.':
                     log_message = "Invalid \'.\' character found in {} name in sql for " \
-                                  "{} row name: {} and sql: {}."
+                                      "{} row name: {} and sql: {}."
                     log_message = log_message.format(row_type, row_type, name, sql)
                     logger.error(log_message)
                     raise MasterSchemaRowParsingError(log_message)

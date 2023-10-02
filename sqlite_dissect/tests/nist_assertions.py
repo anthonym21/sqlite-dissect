@@ -3,19 +3,11 @@ from hashlib import md5
 
 
 def row_equals(row1, row2):
-    for attr1, attr2 in zip(row1, row2):
-        if str(attr1) != str(attr2):
-            return False
-
-    return True
+    return all(str(attr1) == str(attr2) for attr1, attr2 in zip(row1, row2))
 
 
 def row_exists(target, row_list):
-    for row in row_list:
-        if row_equals(row, target):
-            return True
-
-    return False
+    return any(row_equals(row, target) for row in row_list)
 
 
 def get_list_diff(reported_list, correct_list):
@@ -35,7 +27,9 @@ def assert_md5_equals(initial_hash, final_hash, filename):
 
 # SFT-CA-02
 def assert_file_exists(file_path):
-    assert exists(file_path), "The file %s doesn't exist. File has been deleted!" % (basename(file_path))
+    assert exists(
+        file_path
+    ), f"The file {basename(file_path)} doesn't exist. File has been deleted!"
 
 
 # SFT-CA-03

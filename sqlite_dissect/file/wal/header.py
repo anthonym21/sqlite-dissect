@@ -39,7 +39,7 @@ class WriteAheadLogHeader(SQLiteHeader):
             logger.error(log_message)
             raise ValueError(log_message)
 
-        self.magic_number = unpack(b">I", wal_header_byte_array[0:4])[0]
+        self.magic_number = unpack(b">I", wal_header_byte_array[:4])[0]
 
         """
 
@@ -48,7 +48,7 @@ class WriteAheadLogHeader(SQLiteHeader):
         """
 
         if self.magic_number not in [WAL_MAGIC_NUMBER_BIG_ENDIAN, WAL_MAGIC_NUMBER_LITTLE_ENDIAN]:
-            log_message = "The magic number: {} is valid.".format(self.magic_number)
+            log_message = f"The magic number: {self.magic_number} is valid."
             logger.error(log_message)
             raise HeaderParsingError(log_message)
 
@@ -109,7 +109,7 @@ class WriteAheadLogFrameHeader(object):
             logger.error(log_message)
             raise ValueError(log_message)
 
-        self.page_number = unpack(b">I", wal_frame_header_byte_array[0:4])[0]
+        self.page_number = unpack(b">I", wal_frame_header_byte_array[:4])[0]
         self.page_size_after_commit = unpack(b">I", wal_frame_header_byte_array[4:8])[0]
         self.salt_1 = unpack(b">I", wal_frame_header_byte_array[8:12])[0]
         self.salt_2 = unpack(b">I", wal_frame_header_byte_array[12:16])[0]

@@ -11,12 +11,13 @@ def get_db_header(filepath):
 
 
 def find_header_changes(prev_header, current_header):
-    changes = {}
-    for prev_item, current_item in zip(prev_header.__dict__.items(), current_header.__dict__.items()):
-        if prev_item != current_item:
-            changes[prev_item[0]] = (prev_item[1], current_item[1])
-
-    return changes
+    return {
+        prev_item[0]: (prev_item[1], current_item[1])
+        for prev_item, current_item in zip(
+            prev_header.__dict__.items(), current_header.__dict__.items()
+        )
+        if prev_item != current_item
+    }
 
 
 test_db_files = [

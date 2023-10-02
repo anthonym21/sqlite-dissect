@@ -125,7 +125,7 @@ class Record(Payload):
         self.byte_size = payload_byte_size
         self.end_offset = self.start_offset + bytes_on_first_page
 
-        self.has_overflow = False if not overflow else True
+        self.has_overflow = bool(overflow)
         self.bytes_on_first_page = bytes_on_first_page
         self.overflow_byte_size = self.byte_size - self.bytes_on_first_page
 
@@ -147,7 +147,7 @@ class Record(Payload):
 
         if len(total_record_content) != self.byte_size:
             log_message = "The record content was found to be a different length of: {} than the specified byte " \
-                          "size: {} on page."
+                              "size: {} on page."
             log_message = log_message.format(len(total_record_content), self.byte_size)
             logger.error(log_message)
             raise RecordParsingError(log_message)

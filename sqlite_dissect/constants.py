@@ -27,7 +27,7 @@ class Enum(MutableMapping):
         elif isinstance(data, dict):
             self._store = data
         else:
-            log_message = "Unable to initialize enumeration for: {} with type: {}.".format(data, type(data))
+            log_message = f"Unable to initialize enumeration for: {data} with type: {type(data)}."
             getLogger(LOGGER_NAME).error(log_message)
             raise ValueError(log_message)
 
@@ -44,7 +44,7 @@ class Enum(MutableMapping):
         del self._store[key]
 
     def __contains__(self, key):
-        return True if key in self._store else False
+        return key in self._store
 
     def __iter__(self):
         return iter(self._store)
@@ -293,5 +293,7 @@ if maxunicode >= 0x10000:
                                     (0xDFFFE, 0xDFFFF), (0xEFFFE, 0xEFFFF), (0xFFFFE, 0xFFFFF),
                                     (0x10FFFE, 0x10FFFF)])
 
-_illegal_xml_ranges = ["%s-%s" % (unichr(low), unichr(high)) for (low, high) in _illegal_xml_characters]
-ILLEGAL_XML_CHARACTER_PATTERN = compile(u'[%s]' % u''.join(_illegal_xml_ranges))
+_illegal_xml_ranges = [
+    f"{unichr(low)}-{unichr(high)}" for (low, high) in _illegal_xml_characters
+]
+ILLEGAL_XML_CHARACTER_PATTERN = compile(f"[{''.join(_illegal_xml_ranges)}]")

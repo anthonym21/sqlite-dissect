@@ -66,13 +66,13 @@ class CommitSqliteExporter(object):
         if exists(self._sqlite_file_name):
 
             # Generate a uuid to append to the file name
-            new_file_name_for_existing_file = self._sqlite_file_name + "-" + str(uuid4())
+            new_file_name_for_existing_file = f"{self._sqlite_file_name}-{str(uuid4())}"
 
             # Rename the existing file
             rename(self._sqlite_file_name, new_file_name_for_existing_file)
 
             log_message = "File: {} already existing when creating the file for commit sqlite exporting.  The " \
-                          "file was renamed to: {} and new data will be written to the file name specified."
+                              "file was renamed to: {} and new data will be written to the file name specified."
             log_message = log_message.format(self._sqlite_file_name, new_file_name_for_existing_file)
             getLogger(LOGGER_NAME).debug(log_message)
 
@@ -114,8 +114,12 @@ class CommitSqliteExporter(object):
 
         # Check if the master schema entry name is a internal schema object and if so preface it with "iso_"
         internal_schema_object = master_schema_entry.internal_schema_object \
-            if hasattr(master_schema_entry, "internal_schema_object") else False
-        table_name = "iso_" + master_schema_entry.name if internal_schema_object else master_schema_entry.name
+                if hasattr(master_schema_entry, "internal_schema_object") else False
+        table_name = (
+            f"iso_{master_schema_entry.name}"
+            if internal_schema_object
+            else master_schema_entry.name
+        )
 
         # Check if we have created the table for this master schema entry name yet
         if master_schema_entry.name not in self._master_schema_entries_created_tables:
@@ -157,25 +161,22 @@ class CommitSqliteExporter(object):
 
                 """
 
-                cells = list()
+                cells = []
                 cells.extend(commit.added_cells.values())
                 cells.extend(commit.updated_cells.values())
                 cells.extend(commit.deleted_cells.values())
                 cells.extend(commit.carved_cells.values())
 
-                if len(cells) < 1:
+                if not cells:
                     log_message = "Found invalid number of cells in commit when specified updated: {} " \
-                                  "found for sqlite export on master schema entry name: {} page type: {} " \
-                                  "while writing to sqlite file name: {}."
+                                      "found for sqlite export on master schema entry name: {} page type: {} " \
+                                      "while writing to sqlite file name: {}."
                     log_message = log_message.format(len(cells), commit.name, commit.page_type, self._sqlite_file_name)
                     logger.warn(log_message)
                     raise ExportError(log_message)
 
                 number_of_columns = len(cells[0].payload.record_columns)
-                index_column_headers = []
-                for i in range(number_of_columns):
-                    index_column_headers.append("Column {}".format(i))
-
+                index_column_headers = [f"Column {i}" for i in range(number_of_columns)]
                 column_headers.extend(index_column_headers)
                 column_headers = [sub(" ", "_", column_header).lower() for column_header in column_headers]
 
@@ -196,7 +197,7 @@ class CommitSqliteExporter(object):
                 for column_header in column_headers:
                     updated_column_header_name = "sd_" + sub(" ", "_", column_header).lower()
                     while updated_column_header_name in column_definitions:
-                        updated_column_header_name = "sd_" + updated_column_header_name
+                        updated_column_header_name = f"sd_{updated_column_header_name}"
                     updated_column_headers.append(updated_column_header_name)
 
                 updated_column_headers.extend(column_definitions)
@@ -205,7 +206,7 @@ class CommitSqliteExporter(object):
             else:
 
                 log_message = "Invalid commit page type: {} found for sqlite export on master " \
-                              "schema entry name: {} while writing to sqlite file name: {}."
+                                  "schema entry name: {} while writing to sqlite file name: {}."
                 log_message = log_message.format(commit.page_type, commit.name, self._sqlite_file_name)
                 logger.warn(log_message)
                 raise ExportError(log_message)
@@ -264,7 +265,7 @@ class CommitSqliteExporter(object):
         else:
 
             log_message = "Invalid commit page type: {} found for sqlite export on master " \
-                          "schema entry name: {} while writing to sqlite file name: {}."
+                              "schema entry name: {} while writing to sqlite file name: {}."
             log_message = log_message.format(commit.page_type, commit.name, self._sqlite_file_name)
             logger.warn(log_message)
             raise ExportError(log_message)
@@ -336,34 +337,34 @@ class CommitSqliteExporter(object):
 
         """
 
-        if cells:
+        if not cells:
+            return
+        entries = []
 
-            entries = []
+        for cell in cells:
 
-            for cell in cells:
+            cell_record_column_values = []
+            for record_column in cell.payload.record_columns:
+                serial_type = record_column.serial_type
+                text_affinity = serial_type >= 13 and serial_type % 2 == 1
+                value = record_column.value
 
-                cell_record_column_values = []
-                for record_column in cell.payload.record_columns:
-                    serial_type = record_column.serial_type
-                    text_affinity = True if serial_type >= 13 and serial_type % 2 == 1 else False
-                    value = record_column.value
-
-                    if value is None:
-                        pass
-                    elif isinstance(value, bytearray):
+                if value is None:
+                    pass
+                elif isinstance(value, bytearray):
+                    if text_affinity:
+                        value = value.decode(database_text_encoding, "replace")
+                    else:
+                        value = buffer(value)
+                elif isinstance(value, str):
+                    try:
                         if text_affinity:
                             value = value.decode(database_text_encoding, "replace")
                         else:
                             value = buffer(value)
-                    elif isinstance(value, str):
-                        try:
-                            if text_affinity:
-                                value = value.decode(database_text_encoding, "replace")
-                            else:
-                                value = buffer(value)
-                        except UnicodeDecodeError:
+                    except UnicodeDecodeError:
 
-                            """
+                        """
 
                             Note:  Here we do not decode or encode the value, since the above failed the value will
                                    contain text that cannot be properly decoded and most likely due to random bytes
@@ -374,39 +375,39 @@ class CommitSqliteExporter(object):
 
                             """
 
-                            value = buffer(value)
+                        value = buffer(value)
 
-                    cell_record_column_values.append(value)
+                cell_record_column_values.append(value)
 
-                row = [file_type, cell.version_number, cell.page_version_number, cell.source, cell.page_number,
-                       cell.location, operation, cell.file_offset]
-                if page_type == PAGE_TYPE.B_TREE_TABLE_LEAF:
-                    row.append(cell.row_id)
-                row.extend(cell_record_column_values)
+            row = [file_type, cell.version_number, cell.page_version_number, cell.source, cell.page_number,
+                   cell.location, operation, cell.file_offset]
+            if page_type == PAGE_TYPE.B_TREE_TABLE_LEAF:
+                row.append(cell.row_id)
+            row.extend(cell_record_column_values)
 
-                # Check the length of the row against the column count and pad it out with NULLs if necessary
-                if len(row) < column_count:
-                    row.extend([None] * (column_count - len(row)))
+            # Check the length of the row against the column count and pad it out with NULLs if necessary
+            if len(row) < column_count:
+                row.extend([None] * (column_count - len(row)))
 
-                if len(row) > column_count:
-                    log_message = "The number of columns found in the row: {} were more than the expected: {} " \
+            if len(row) > column_count:
+                log_message = "The number of columns found in the row: {} were more than the expected: {} " \
                                   "for sqlite export on master schema entry name: {} with file type: {} " \
                                   "and page type: {}."
-                    log_message = log_message.format(len(row), column_count, table_name, file_type, page_type)
-                    getLogger(LOGGER_NAME).warn(log_message)
-                    raise ExportError(log_message)
-
-                entries.append(tuple(row))
-
-            if not entries:
-                log_message = "Did not find any entries to write when cells were specified for sqlite export on " \
-                              "master schema entry name: {} with file type: {} and page type: {}."
-                log_message = log_message.format(table_name, file_type, page_type)
+                log_message = log_message.format(len(row), column_count, table_name, file_type, page_type)
                 getLogger(LOGGER_NAME).warn(log_message)
                 raise ExportError(log_message)
 
-            number_of_rows = (len(entries[0]) - 1)
+            entries.append(tuple(row))
 
-            column_fields = "?" + (", ?" * number_of_rows)
-            insert_statement = "INSERT INTO {} VALUES ({})".format(table_name, column_fields)
-            connection.executemany(insert_statement, entries)
+        if not entries:
+            log_message = "Did not find any entries to write when cells were specified for sqlite export on " \
+                              "master schema entry name: {} with file type: {} and page type: {}."
+            log_message = log_message.format(table_name, file_type, page_type)
+            getLogger(LOGGER_NAME).warn(log_message)
+            raise ExportError(log_message)
+
+        number_of_rows = (len(entries[0]) - 1)
+
+        column_fields = "?" + (", ?" * number_of_rows)
+        insert_statement = f"INSERT INTO {table_name} VALUES ({column_fields})"
+        connection.executemany(insert_statement, entries)
